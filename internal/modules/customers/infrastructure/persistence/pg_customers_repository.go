@@ -3,13 +3,13 @@ package persistence
 import (
 	"context"
 
-	infraDB "github.com/marechal-dev/RouteBastion/Packages/routeBastion/internal/infrastructure/database"
-	"github.com/marechal-dev/RouteBastion/Packages/routeBastion/internal/infrastructure/database/generated"
-	"github.com/marechal-dev/RouteBastion/Packages/routeBastion/internal/modules/customers/domain/entities"
-	"github.com/marechal-dev/RouteBastion/Packages/routeBastion/internal/modules/customers/dtos"
-	"github.com/marechal-dev/RouteBastion/Packages/routeBastion/internal/modules/customers/infrastructure/mappers"
-	infraShared "github.com/marechal-dev/RouteBastion/Packages/routeBastion/internal/modules/shared/infrastructure"
-	"github.com/marechal-dev/RouteBastion/Packages/routeBastion/internal/platform/database"
+	infraDB "github.com/marechal-dev/RouteBastion-Broker/internal/infrastructure/database"
+	"github.com/marechal-dev/RouteBastion-Broker/internal/infrastructure/database/generated"
+	"github.com/marechal-dev/RouteBastion-Broker/internal/modules/customers/domain/entities"
+	"github.com/marechal-dev/RouteBastion-Broker/internal/modules/customers/dtos"
+	"github.com/marechal-dev/RouteBastion-Broker/internal/modules/customers/infrastructure/mappers"
+	infraShared "github.com/marechal-dev/RouteBastion-Broker/internal/modules/shared/infrastructure"
+	"github.com/marechal-dev/RouteBastion-Broker/internal/platform/database"
 )
 
 type PGCustomersRepository struct {

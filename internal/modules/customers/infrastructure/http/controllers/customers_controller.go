@@ -6,14 +6,14 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	dbImpl "github.com/marechal-dev/RouteBastion/Packages/routeBastion/internal/infrastructure/database"
-	usecases "github.com/marechal-dev/RouteBastion/Packages/routeBastion/internal/modules/customers/application/use_cases"
-	"github.com/marechal-dev/RouteBastion/Packages/routeBastion/internal/modules/customers/dtos"
-	"github.com/marechal-dev/RouteBastion/Packages/routeBastion/internal/modules/customers/infrastructure/cryptography"
-	"github.com/marechal-dev/RouteBastion/Packages/routeBastion/internal/modules/customers/infrastructure/persistence"
-	"github.com/marechal-dev/RouteBastion/Packages/routeBastion/internal/modules/customers/infrastructure/presenters"
-	sharedErrors "github.com/marechal-dev/RouteBastion/Packages/routeBastion/internal/modules/shared/errors"
-	"github.com/marechal-dev/RouteBastion/Packages/routeBastion/internal/platform/database"
+	dbImpl "github.com/marechal-dev/RouteBastion-Broker/internal/infrastructure/database"
+	usecases "github.com/marechal-dev/RouteBastion-Broker/internal/modules/customers/application/use_cases"
+	"github.com/marechal-dev/RouteBastion-Broker/internal/modules/customers/dtos"
+	"github.com/marechal-dev/RouteBastion-Broker/internal/modules/customers/infrastructure/cryptography"
+	"github.com/marechal-dev/RouteBastion-Broker/internal/modules/customers/infrastructure/persistence"
+	"github.com/marechal-dev/RouteBastion-Broker/internal/modules/customers/infrastructure/presenters"
+	sharedErrors "github.com/marechal-dev/RouteBastion-Broker/internal/modules/shared/errors"
+	"github.com/marechal-dev/RouteBastion-Broker/internal/platform/database"
 )
 
 type CustomersController struct {

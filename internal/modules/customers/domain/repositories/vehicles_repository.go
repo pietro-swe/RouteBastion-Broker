@@ -1,6 +1,6 @@
 package repositories
 
-import "github.com/marechal-dev/RouteBastion/Packages/routeBastion/internal/modules/customers/domain/entities"
+import "github.com/marechal-dev/RouteBastion-Broker/internal/modules/customers/domain/entities"
 
 type VehiclesRepository interface {
 	CreateOne(vehicle *entities.Vehicle) (*entities.Vehicle, error)

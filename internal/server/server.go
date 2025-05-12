@@ -13,13 +13,13 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 
-	infraDB "github.com/marechal-dev/RouteBastion/Packages/routeBastion/internal/infrastructure/database"
-	customers "github.com/marechal-dev/RouteBastion/Packages/routeBastion/internal/modules/customers/infrastructure/http/controllers"
-	health "github.com/marechal-dev/RouteBastion/Packages/routeBastion/internal/modules/health/infrastructure/http/controllers"
-	"github.com/marechal-dev/RouteBastion/Packages/routeBastion/internal/modules/shared/application/middlewares"
-	"github.com/marechal-dev/RouteBastion/Packages/routeBastion/internal/modules/shared/application/validators"
-	platformDB "github.com/marechal-dev/RouteBastion/Packages/routeBastion/internal/platform/database"
-	"github.com/marechal-dev/RouteBastion/Packages/routeBastion/internal/utils"
+	infraDB "github.com/marechal-dev/RouteBastion-Broker/internal/infrastructure/database"
+	customers "github.com/marechal-dev/RouteBastion-Broker/internal/modules/customers/infrastructure/http/controllers"
+	health "github.com/marechal-dev/RouteBastion-Broker/internal/modules/health/infrastructure/http/controllers"
+	"github.com/marechal-dev/RouteBastion-Broker/internal/modules/shared/application/middlewares"
+	"github.com/marechal-dev/RouteBastion-Broker/internal/modules/shared/application/validators"
+	platformDB "github.com/marechal-dev/RouteBastion-Broker/internal/platform/database"
+	"github.com/marechal-dev/RouteBastion-Broker/internal/utils"
 )
 
 type Server struct {

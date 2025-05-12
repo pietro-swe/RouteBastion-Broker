@@ -1,12 +1,11 @@
 name: Run Tests
 on:
   push:
-    paths:
-      - '.github/workflows/**'
-      - 'Packages/routeBastion/**'
+    branches:
+      - main
   pull_request:
-    paths:
-      - 'Packages/routeBastion/**'
+    branches:
+      - main
 
 jobs:
   build:
@@ -20,12 +19,10 @@ jobs:
         uses: actions/setup-go@v4
         with:
           go-version: '1.24.x'
-          cache-dependency-path: Packages/routeBastion/go.sum
-          
+          cache-dependency-path: go.sum
+
       - name: Build
-        working-directory: Packages/routeBastion
         run: go build -v ./...
-      
+
       - name: Test with the Go CLI
-        working-directory: Packages/routeBastion
         run: go test ./...

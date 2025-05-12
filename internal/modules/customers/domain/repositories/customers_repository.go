@@ -3,8 +3,8 @@ package repositories
 import (
 	"context"
 
-	"github.com/marechal-dev/RouteBastion/Packages/routeBastion/internal/modules/customers/domain/entities"
-	"github.com/marechal-dev/RouteBastion/Packages/routeBastion/internal/modules/customers/dtos"
+	"github.com/marechal-dev/RouteBastion-Broker/internal/modules/customers/domain/entities"
+	"github.com/marechal-dev/RouteBastion-Broker/internal/modules/customers/dtos"
 )
 
 type CustomersRepository interface {

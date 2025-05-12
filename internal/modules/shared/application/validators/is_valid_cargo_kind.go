@@ -2,7 +2,7 @@ package validators
 
 import (
 	"github.com/go-playground/validator/v10"
-	"github.com/marechal-dev/RouteBastion/Packages/routeBastion/internal/modules/customers/domain/entities"
+	"github.com/marechal-dev/RouteBastion-Broker/internal/modules/customers/domain/entities"
 )
 
 func IsValidCargoKind(fl validator.FieldLevel) bool {

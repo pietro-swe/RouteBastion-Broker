@@ -10,7 +10,7 @@ import (
 	"github.com/exaring/otelpgx"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	platformDb "github.com/marechal-dev/RouteBastion/Packages/routeBastion/internal/platform/database"
+	platformDb "github.com/marechal-dev/RouteBastion-Broker/internal/platform/database"
 )
 
 type PgxProvider struct {

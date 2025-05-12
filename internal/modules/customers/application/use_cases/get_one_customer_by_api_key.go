@@ -1,8 +1,8 @@
 package usecases
 
 import (
-	"github.com/marechal-dev/RouteBastion/Packages/routeBastion/internal/modules/customers/domain/entities"
-	"github.com/marechal-dev/RouteBastion/Packages/routeBastion/internal/modules/customers/domain/repositories"
+	"github.com/marechal-dev/RouteBastion-Broker/internal/modules/customers/domain/entities"
+	"github.com/marechal-dev/RouteBastion-Broker/internal/modules/customers/domain/repositories"
 )
 
 type GetOneCustomerUseCase interface {

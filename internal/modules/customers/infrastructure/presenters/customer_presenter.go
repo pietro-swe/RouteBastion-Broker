@@ -3,7 +3,7 @@ package presenters
 import (
 	"time"
 
-	"github.com/marechal-dev/RouteBastion/Packages/routeBastion/internal/modules/customers/domain/entities"
+	"github.com/marechal-dev/RouteBastion-Broker/internal/modules/customers/domain/entities"
 )
 
 type CustomerPresenter struct {

@@ -9,8 +9,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/marechal-dev/RouteBastion/Packages/routeBastion/internal/server"
-	"github.com/marechal-dev/RouteBastion/Packages/routeBastion/internal/utils"
+	"github.com/marechal-dev/RouteBastion-Broker/internal/server"
+	"github.com/marechal-dev/RouteBastion-Broker/internal/utils"
 )
 
 func gracefulShutdown(apiServer *http.Server, done chan bool) {
