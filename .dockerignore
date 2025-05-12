@@ -1,0 +1,6 @@
+tmp/**
+.git/**
+bin/**
+README.md
+app.env.example
+.editorconfig
