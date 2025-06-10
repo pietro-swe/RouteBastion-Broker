@@ -1,0 +1,92 @@
+name: 'Route-Bastion-Broker'
+
+volumes:
+  cache_data:
+    driver: local
+  db_data:
+    driver: local
+
+networks:
+  metrics:
+    driver: bridge
+
+services:
+  api-gateway:
+    image: kong:3.9
+    container_name: 'kong-api-gateway'
+    environment:
+      KONG_DATABASE: "off"
+      KONG_ADMIN_LISTEN: "0.0.0.0:8001"
+      KONG_ADMIN_GUI_URL: "http://localhost:8002"
+      KONG_DECLARATIVE_CONFIG: "/kong/config.yaml"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - "./docker/kong/config.yaml:/kong/config.yaml"
+    ports:
+      - "8000:8000" # Proxy
+      - "8001:8001" # API (Admin)
+      - "8002:8002" # UI (Admin)
+      - "8443:8443" # Proxy SSL (HTTPS)
+      - "8444:8444" # API (Admin) (HTTPS)
+
+  api-dev:
+    container_name: 'api-broker-dev'
+    build:
+      context: .
+      dockerfile: build/app.dev.Dockerfile
+    ports:
+      - 8080:8080
+    depends_on:
+      database:
+        condition: service_healthy
+      cache:
+        condition: service_healthy
+    volumes:
+      - ./:/app
+
+  database:
+    image: bitnami/postgresql:17.2.0
+    container_name: 'postgresql-db'
+    restart: always
+    ports:
+      - 5432:5432
+    environment:
+      - POSTGRESQL_USERNAME=docker
+      - POSTGRESQL_PASSWORD=docker
+      - POSTGRESQL_POSTGRES_PASSWORD=docker
+      - POSTGRESQL_DATABASE=route_bastion
+    healthcheck:
+      test: ["CMD-SHELL", "sh -c 'pg_isready -U docker -d route_bastion'"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    volumes:
+      - 'db_data:/bitnami/postgresql'
+
+  cache:
+    image: redis:7.4.2
+    container_name: 'redis-cache'
+    ports:
+      - 6379:6379
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    volumes:
+      - 'cache_data:/data'
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.57
+    container_name: 'jaeger'
+    environment:
+      - COLLECTOR_ZIPKIN_HOST_PORT=:9411
+    ports:
+      - "16686:16686" # UI
+      - "6831:6831/udp" # Traces UDP
+      - "14268:14268" # Traces HTTP
+      - "4317:4317" # OpenTelemetry/gRPC
+      - "4318:4318" # OpenTelemetry/HTTP

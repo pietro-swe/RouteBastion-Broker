@@ -1,4 +1,4 @@
-FROM golang:1.24.0-alpine
+FROM golang:1.24.3-alpine
 
 WORKDIR /app
 
@@ -7,14 +7,14 @@ RUN go install github.com/air-verse/air@latest
 COPY go.mod go.sum ./
 RUN go mod download
 
-ADD cmd ./cmd
-ADD scripts ./scripts
-ADD internal ./internal
-ADD database ./database
+ADD cmd /cmd
+ADD scripts /scripts
+ADD internal /internal
+ADD sql /sql
 
-COPY .air.toml ./
-COPY sqlc.yml ./
-COPY app.env ./
+COPY .air.toml .
+COPY sqlc.yml .
+COPY app.env .
 
 EXPOSE 8080
 

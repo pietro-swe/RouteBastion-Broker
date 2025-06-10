@@ -1,6 +1,7 @@
-tmp/**
-.git/**
-bin/**
+tmp
+.git
+.github
+bin
 README.md
 app.env.example
 .editorconfig

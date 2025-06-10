@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/marechal-dev/RouteBastion-Broker/internal/server"
+	"github.com/marechal-dev/RouteBastion-Broker/internal/server/instrumentation"
 	"github.com/marechal-dev/RouteBastion-Broker/internal/utils"
 )
 
@@ -28,10 +29,10 @@ func gracefulShutdown(apiServer *http.Server, done chan bool) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := apiServer.Shutdown(ctx); err != nil {
-		log.Printf("Server forced to shutdown with error: %v", err)
+		log.Printf("server forced to shutdown with error: %v", err)
 	}
 
-	log.Println("Server exiting")
+	log.Println("server exiting")
 
 	// Notify the main goroutine that the shutdown is complete
 	done <- true
@@ -43,28 +44,16 @@ func main() {
 		log.Fatalf("could not load config: %v", err)
 	}
 
-	tp, err := utils.InitTracer()
+	exporter, err := instrumentation.InitExporter(config)
 	if err != nil {
-		log.Fatalf("failed to initialize tracer: %v", err)
+		log.Fatalf("failed to initialize exporter: %v", err)
 	}
+	defer exporter.Shutdown(context.Background())
 
-	defer func() {
-		if err := tp.Shutdown(context.Background()); err != nil {
-			log.Fatalf("failed to shut down tracer provider: %v", err)
-		}
-	}()
+	tracer := instrumentation.InitTracer(exporter)
+	defer tracer.Shutdown(context.Background())
 
-	mp, err := utils.InitMeter()
-	if err != nil {
-		log.Fatalf("failed to initialize meter: %v", err)
-	}
-	defer func() {
-		if err := mp.Shutdown(context.Background()); err != nil {
-			log.Fatalf("failed to shut down meter provider: %v", err)
-		}
-	}()
-
-	server := server.NewServer(config)
+	server := server.NewServer(config, tracer)
 
 	// Create a done channel to signal when the shutdown is complete
 	done := make(chan bool, 1)

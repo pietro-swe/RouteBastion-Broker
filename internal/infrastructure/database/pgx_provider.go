@@ -70,6 +70,11 @@ func NewPgxProvider(
 	if err != nil {
 		log.Fatalf("Unable to create connection pool: %v\n", err)
 	}
+
+	if err := otelpgx.RecordStats(pool); err != nil {
+		log.Fatalf("unable to record database stats: %v", err)
+	}
+
 	dbInstance = &PgxProvider{
 		db: pool,
 	}

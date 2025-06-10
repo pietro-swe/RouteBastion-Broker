@@ -9,6 +9,9 @@ type AppEnvConfig struct {
 	DBPort     string `mapstructure:"DB_PORT"`
 	DBDatabase string `mapstructure:"DB_DATABASE"`
 	DBSchema   string `mapstructure:"DB_SCHEMA"`
+
+	OtelEndpoint string `mapstructure:"OTEL_ENDPOINT"`
+
 	ServerPort string `mapstructure:"SERVER_PORT"`
 }
 

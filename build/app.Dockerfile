@@ -1,4 +1,4 @@
-FROM golang:1.24.0-alpine AS build
+FROM golang:1.24.3-alpine AS build
 
 WORKDIR /app
 
@@ -7,10 +7,10 @@ RUN go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
 COPY go.mod go.sum ./
 RUN go mod download
 
-ADD cmd /app/cmd
-ADD scripts /app/scripts
-ADD internal /app/internal
-ADD database /app/database
+ADD cmd /cmd
+ADD scripts /scripts
+ADD internal /internal
+ADD sql /sql
 
 COPY sqlc.yml ./
 COPY app.env ./

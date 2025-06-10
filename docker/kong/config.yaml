@@ -1,0 +1,53 @@
+_format_version: "3.0"
+_transform: true
+
+services:
+  - name: broker
+    url: http://host.docker.internal:8080
+    protocol: http
+    host: host.docker.internal
+    port: 8080
+    path: "/"
+    connect_timeout: 10000
+    retries: 3
+    routes:
+      - name: "api-broker"
+        protocols:
+          - http
+          - https
+        paths:
+          - "/health"
+          - "/customers"
+
+plugins:
+  - name: cors
+    config:
+      origins:
+        - "*"
+      methods:
+        - GET
+        - POST
+        - PUT
+        - PATCH
+        - DELETE
+        - OPTIONS
+      headers:
+        - Accept
+        - Content-Type
+        - RouteBastion-API-Key
+
+  - name: key-auth
+    enabled: true
+    protocols:
+      - grpc
+      - grpcs
+      - http
+      - https
+    config:
+      hide_credentials: false
+      key_in_body: false
+      key_in_query: false
+      key_in_header: true
+      key_names:
+        - RouteBastion-API-Key
+      run_on_preflight: true
