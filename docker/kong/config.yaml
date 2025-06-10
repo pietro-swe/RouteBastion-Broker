@@ -19,6 +19,13 @@ services:
           - "/health"
           - "/customers"
 
+consumers:
+  - username: Admin
+
+keyauth_credentials:
+  - consumer: Admin
+    key: abc
+
 plugins:
   - name: cors
     config:
