@@ -15,7 +15,6 @@ import (
 	customers "github.com/marechal-dev/RouteBastion-Broker/internal/modules/customers/infrastructure/http/controllers"
 	health "github.com/marechal-dev/RouteBastion-Broker/internal/modules/health/infrastructure/http/controllers"
 	"github.com/marechal-dev/RouteBastion-Broker/internal/modules/shared/application/validators"
-	platformDB "github.com/marechal-dev/RouteBastion-Broker/internal/platform/database"
 	"github.com/marechal-dev/RouteBastion-Broker/internal/utils"
 	"go.opentelemetry.io/otel/sdk/trace"
 )
@@ -24,7 +23,7 @@ type Server struct {
 	port int
 
 	tracer *trace.TracerProvider
-	db platformDB.DBProvider
+	db infraDB.DBProvider
 
 	healthController    health.HealthController
 	customersController customers.CustomersController

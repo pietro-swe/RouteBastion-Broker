@@ -9,14 +9,13 @@ import (
 	"github.com/marechal-dev/RouteBastion-Broker/internal/modules/customers/dtos"
 	"github.com/marechal-dev/RouteBastion-Broker/internal/modules/customers/infrastructure/mappers"
 	infraShared "github.com/marechal-dev/RouteBastion-Broker/internal/modules/shared/infrastructure"
-	"github.com/marechal-dev/RouteBastion-Broker/internal/platform/database"
 )
 
 type PGCustomersRepository struct {
 	queries *generated.Queries
 }
 
-func NewPGCustomersRepository(db database.DBProvider) *PGCustomersRepository {
+func NewPGCustomersRepository(db infraDB.DBProvider) *PGCustomersRepository {
 	return &PGCustomersRepository{
 		queries: generated.New(db.GetConn()),
 	}

@@ -9,8 +9,6 @@ import (
 
 	"github.com/exaring/otelpgx"
 	"github.com/jackc/pgx/v5/pgxpool"
-
-	platformDb "github.com/marechal-dev/RouteBastion-Broker/internal/platform/database"
 )
 
 type PgxProvider struct {
@@ -34,7 +32,7 @@ func NewPgxProvider(
 	dbPort string,
 	dbHost string,
 	dbSchema string,
-) platformDb.DBProvider {
+) DBProvider {
 	// Reuse Connection
 	if dbInstance != nil {
 		return dbInstance

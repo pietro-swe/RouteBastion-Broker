@@ -5,12 +5,12 @@ import (
 	"errors"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/marechal-dev/RouteBastion-Broker/internal/infrastructure/database"
 	"github.com/marechal-dev/RouteBastion-Broker/internal/modules/customers/application/cryptography"
 	"github.com/marechal-dev/RouteBastion-Broker/internal/modules/customers/domain/entities"
 	"github.com/marechal-dev/RouteBastion-Broker/internal/modules/customers/domain/repositories"
 	"github.com/marechal-dev/RouteBastion-Broker/internal/modules/customers/dtos"
 	sharedErrors "github.com/marechal-dev/RouteBastion-Broker/internal/modules/shared/errors"
-	"github.com/marechal-dev/RouteBastion-Broker/internal/platform/database"
 )
 
 type CreateCustomerUseCase interface {

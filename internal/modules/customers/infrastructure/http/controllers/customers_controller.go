@@ -6,14 +6,13 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	dbImpl "github.com/marechal-dev/RouteBastion-Broker/internal/infrastructure/database"
+	"github.com/marechal-dev/RouteBastion-Broker/internal/infrastructure/database"
 	usecases "github.com/marechal-dev/RouteBastion-Broker/internal/modules/customers/application/use_cases"
 	"github.com/marechal-dev/RouteBastion-Broker/internal/modules/customers/dtos"
 	"github.com/marechal-dev/RouteBastion-Broker/internal/modules/customers/infrastructure/cryptography"
 	"github.com/marechal-dev/RouteBastion-Broker/internal/modules/customers/infrastructure/persistence"
 	"github.com/marechal-dev/RouteBastion-Broker/internal/modules/customers/infrastructure/presenters"
 	sharedErrors "github.com/marechal-dev/RouteBastion-Broker/internal/modules/shared/errors"
-	"github.com/marechal-dev/RouteBastion-Broker/internal/platform/database"
 )
 
 type CustomersController struct {
@@ -41,7 +40,7 @@ func (cc *CustomersController) Create(c *gin.Context) {
 
 	repository := persistence.NewPGCustomersRepository(cc.db)
 	apiKeyGen := cryptography.NewUuidApiKeyGenerator()
-	txManager := dbImpl.NewPgTxManager(cc.db.GetConn())
+	txManager := database.NewPgTxManager(cc.db.GetConn())
 	useCase := usecases.NewCreateCustomerUseCase(txManager, repository, apiKeyGen)
 
 	ctx := context.Background()

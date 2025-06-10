@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/marechal-dev/RouteBastion-Broker/internal/platform/database"
+	"github.com/marechal-dev/RouteBastion-Broker/internal/infrastructure/database"
 )
 
 type HealthController interface {
