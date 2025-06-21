@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 
@@ -11,24 +10,29 @@ import (
 	cryptoImpl "github.com/marechal-dev/RouteBastion-Broker/internal/infrastructure/cryptography/implementations"
 	"github.com/marechal-dev/RouteBastion-Broker/internal/infrastructure/http/presenters"
 	"github.com/marechal-dev/RouteBastion-Broker/internal/infrastructure/persistence"
-	"github.com/marechal-dev/RouteBastion-Broker/internal/infrastructure/persistence/repositories/implementations"
 	repoImpl "github.com/marechal-dev/RouteBastion-Broker/internal/infrastructure/persistence/repositories/implementations"
 	"github.com/marechal-dev/RouteBastion-Broker/internal/shared"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type CustomersController struct {
 	encrytionKey []byte
+	tracer trace.Tracer
 	db persistence.DBProvider
 }
 
-func NewCustomersController(encrytionKey []byte, db persistence.DBProvider) CustomersController {
+func NewCustomersController(encrytionKey []byte, tracer trace.Tracer, db persistence.DBProvider) CustomersController {
 	return CustomersController{
 		encrytionKey: encrytionKey,
+		tracer: tracer,
 		db: db,
 	}
 }
 
 func (cc *CustomersController) Create(c *gin.Context) {
+	ctx, span := cc.tracer.Start(c.Request.Context(), "Create-Customer-Span")
+	defer span.End()
+
 	dto := &dtos.CreateCustomerInput{}
 
 	err := c.BindJSON(&dto)
@@ -52,7 +56,6 @@ func (cc *CustomersController) Create(c *gin.Context) {
 		apiKeyGen,
 	)
 
-	ctx := context.Background()
 	customer, err := useCase.Execute(ctx, dto)
 	if err != nil {
 		switch e := err.(type) {
@@ -85,7 +88,7 @@ func (cc *CustomersController) Create(c *gin.Context) {
 func (cc *CustomersController) GetOneByApiKey(c *gin.Context) {
 	apiKey := c.Param("apiKey")
 
-	repository := implementations.NewPgCustomersRepository(cc.db)
+	repository := repoImpl.NewPgCustomersRepository(cc.db)
 	useCase := usecases.NewGetOneCustomerUseCaseImpl(repository)
 
 	foundCustomer := useCase.Execute(apiKey)

@@ -1,3 +1,6 @@
+/*
+Package instrumentation provides utilities related to Observability
+*/
 package instrumentation
 
 import (

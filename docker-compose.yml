@@ -13,36 +13,36 @@ networks:
     driver: bridge
 
 services:
-  kong-database:
-    image: bitnami/postgresql:17.2.0
-    container_name: 'postgresql-db'
-    restart: always
-    ports:
-      - 5432:5432
-    environment:
-      - POSTGRESQL_USERNAME=kong
-      - POSTGRESQL_PASSWORD=kong
-      - POSTGRESQL_POSTGRES_PASSWORD=docker
-      - POSTGRESQL_DATABASE=kong
-    healthcheck:
-      test: ["CMD-SHELL", "sh -c 'pg_isready -U docker -d kong'"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-      start_period: 15s
-    volumes:
-      - 'kong_db_data:/bitnami/postgresql'
+  # kong-database:
+  #   image: bitnami/postgresql:17.2.0
+  #   container_name: 'kong-postgresql-db'
+  #   restart: always
+  #   ports:
+  #     - 5433:5432
+  #   environment:
+  #     - POSTGRESQL_USERNAME=kong
+  #     - POSTGRESQL_PASSWORD=kong
+  #     - POSTGRESQL_POSTGRES_PASSWORD=docker
+  #     - POSTGRESQL_DATABASE=kong
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "sh -c 'pg_isready -U docker -d kong'"]
+  #     interval: 5s
+  #     timeout: 5s
+  #     retries: 5
+  #     start_period: 15s
+  #   volumes:
+  #     - 'kong_db_data:/bitnami/postgresql'
 
   api-gateway:
     image: kong:3.9
     container_name: 'kong-api-gateway'
     environment:
-      - "KONG_DATABASE=postgres"
+      - "KONG_DATABASE=off"
       - "KONG_ADMIN_LISTEN=0.0.0.0:8001"
       - "KONG_ADMIN_GUI_URL=http://localhost:8002"
       - "KONG_DECLARATIVE_CONFIG=/kong/config.yaml"
-      - "KONG_PG_HOST=kong-database"
-      - "KONG_PG_PASSWORD=kong"
+      # - "KONG_PG_HOST=kong-database:5433"
+      # - "KONG_PG_PASSWORD=kong"
       - "KONG_PROXY_ACCESS_LOG=/dev/stdout"
       - "KONG_ADMIN_ACCESS_LOG=/dev/stdout"
       - "KONG_PROXY_ERROR_LOG=/dev/stderr"
@@ -51,9 +51,9 @@ services:
       - "host.docker.internal:host-gateway"
     volumes:
       - "./docker/kong/config.yaml:/kong/config.yaml"
-    depends_on:
-      kong-database:
-        condition: service_healthy
+    # depends_on:
+    #   kong-database:
+    #     condition: service_healthy
     ports:
       - "8000:8000" # Proxy
       - "8001:8001" # API (Admin)

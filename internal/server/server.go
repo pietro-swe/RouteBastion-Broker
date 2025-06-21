@@ -1,3 +1,6 @@
+/*
+Package server provides an unified interface that represents the application Server
+*/
 package server
 
 import (
@@ -10,29 +13,27 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/validator/v10"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/marechal-dev/RouteBastion-Broker/internal/infrastructure/persistence"
 
 	"github.com/marechal-dev/RouteBastion-Broker/internal/infrastructure/http/controllers"
 	"github.com/marechal-dev/RouteBastion-Broker/internal/infrastructure/http/validators"
 	"github.com/marechal-dev/RouteBastion-Broker/internal/utils"
-	"go.opentelemetry.io/otel/sdk/trace"
 )
 
 type Server struct {
 	Port int
-
-	Tracer *trace.TracerProvider
-
-	DB persistence.DBProvider
-
 	EncryptionKey []byte
+
+	Trace trace.Tracer
+	DB persistence.DBProvider
 
 	HealthController    controllers.HealthController
 	CustomersController controllers.CustomersController
 }
 
-func NewServer(config utils.AppEnvConfig, tracer *trace.TracerProvider) *http.Server {
+func NewServer(config utils.AppEnvConfig, trace trace.Tracer) *http.Server {
 	port, err := strconv.Atoi(config.ServerPort)
 	if err != nil {
 		log.Fatalf("could not cast server port: %v", err)
@@ -49,9 +50,9 @@ func NewServer(config utils.AppEnvConfig, tracer *trace.TracerProvider) *http.Se
 
 	newServer := &Server{
 		Port: port,
-		Tracer: tracer,
-		DB:   provider,
 		EncryptionKey: config.EncryptionKeyBytes,
+		Trace: trace,
+		DB:   provider,
 	}
 
 	newServer.registerCustomValidators()
@@ -76,7 +77,7 @@ func (s *Server) registerCustomValidators() {
 
 func (s *Server) registerControllers() {
 	s.HealthController = controllers.NewHealthController(s.DB)
-	s.CustomersController = controllers.NewCustomersController(s.EncryptionKey, s.DB)
+	s.CustomersController = controllers.NewCustomersController(s.EncryptionKey, s.Trace, s.DB)
 }
 
 func (s *Server) registerRoutes() http.Handler {

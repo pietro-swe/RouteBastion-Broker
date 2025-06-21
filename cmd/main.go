@@ -12,6 +12,7 @@ import (
 	"github.com/marechal-dev/RouteBastion-Broker/internal/server"
 	"github.com/marechal-dev/RouteBastion-Broker/internal/server/instrumentation"
 	"github.com/marechal-dev/RouteBastion-Broker/internal/utils"
+	"go.opentelemetry.io/otel"
 )
 
 func gracefulShutdown(apiServer *http.Server, done chan bool) {
@@ -34,6 +35,8 @@ func gracefulShutdown(apiServer *http.Server, done chan bool) {
 }
 
 func main() {
+	ctx := context.Background()
+
 	config, err := utils.LoadConfig(".")
 	if err != nil {
 		log.Fatalf("[Broker] could not load config: %v", err)
@@ -51,11 +54,14 @@ func main() {
 		log.Fatalf("[Broker] failed to initialize exporter: %v", err)
 	}
 
-	tracer := instrumentation.InitTracer(exporter)
+	tracerProvider := instrumentation.InitTracer(exporter)
+	otel.SetTracerProvider(tracerProvider)
+
+	tracer := tracerProvider.Tracer("github.com/pietro-swe/RouteBastion-Broker")
 
 	defer func() {
-		exporter.Shutdown(context.Background())
-		tracer.Shutdown(context.Background())
+		exporter.Shutdown(ctx)
+		tracerProvider.Shutdown(ctx)
 	}()
 
 	server := server.NewServer(config, tracer)
