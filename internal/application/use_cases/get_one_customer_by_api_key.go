@@ -1,12 +1,14 @@
 package usecases
 
 import (
-	"github.com/marechal-dev/RouteBastion-Broker/internal/modules/customers/domain/entities"
-	"github.com/marechal-dev/RouteBastion-Broker/internal/modules/customers/domain/repositories"
+	"context"
+
+	"github.com/marechal-dev/RouteBastion-Broker/internal/application/dtos"
+	"github.com/marechal-dev/RouteBastion-Broker/internal/infrastructure/persistence/repositories"
 )
 
 type GetOneCustomerUseCase interface {
-	Execute(apiKey string) *entities.Customer
+	Execute(apiKey string) *dtos.CustomerOutput
 }
 
 type GetOneCustomerUseCaseImpl struct {
@@ -19,8 +21,8 @@ func NewGetOneCustomerUseCaseImpl(repo repositories.CustomersRepository) *GetOne
 	}
 }
 
-func (uc *GetOneCustomerUseCaseImpl) Execute(apiKey string) *entities.Customer {
-	foundCustomer := uc.repo.GetOneByApiKey(apiKey)
+func (uc *GetOneCustomerUseCaseImpl) Execute(apiKey string) *dtos.CustomerOutput {
+	foundCustomer := uc.repo.GetOneByAPIKey(context.Background(), apiKey)
 
 	if foundCustomer == nil {
 		return nil
