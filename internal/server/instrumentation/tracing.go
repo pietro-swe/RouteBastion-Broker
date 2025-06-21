@@ -21,7 +21,7 @@ func InitTracer(exporter *otlptrace.Exporter) *trace.TracerProvider {
 		trace.WithResource(
 			resource.NewWithAttributes(
 				semconv.SchemaURL,
-				semconv.ServiceNameKey.String("broker-api"),
+				semconv.ServiceNameKey.String("Broker-API"),
 			),
 		),
 	)

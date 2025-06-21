@@ -11,22 +11,25 @@ import (
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/validator/v10"
 
-	infraDB "github.com/marechal-dev/RouteBastion-Broker/internal/infrastructure/database"
-	customers "github.com/marechal-dev/RouteBastion-Broker/internal/modules/customers/infrastructure/http/controllers"
-	health "github.com/marechal-dev/RouteBastion-Broker/internal/modules/health/infrastructure/http/controllers"
-	"github.com/marechal-dev/RouteBastion-Broker/internal/modules/shared/application/validators"
+	"github.com/marechal-dev/RouteBastion-Broker/internal/infrastructure/persistence"
+
+	"github.com/marechal-dev/RouteBastion-Broker/internal/infrastructure/http/controllers"
+	"github.com/marechal-dev/RouteBastion-Broker/internal/infrastructure/http/validators"
 	"github.com/marechal-dev/RouteBastion-Broker/internal/utils"
 	"go.opentelemetry.io/otel/sdk/trace"
 )
 
 type Server struct {
-	port int
+	Port int
 
-	tracer *trace.TracerProvider
-	db infraDB.DBProvider
+	Tracer *trace.TracerProvider
 
-	healthController    health.HealthController
-	customersController customers.CustomersController
+	DB persistence.DBProvider
+
+	EncryptionKey []byte
+
+	HealthController    controllers.HealthController
+	CustomersController controllers.CustomersController
 }
 
 func NewServer(config utils.AppEnvConfig, tracer *trace.TracerProvider) *http.Server {
@@ -35,7 +38,7 @@ func NewServer(config utils.AppEnvConfig, tracer *trace.TracerProvider) *http.Se
 		log.Fatalf("could not cast server port: %v", err)
 	}
 
-	provider := infraDB.NewPgxProvider(
+	provider := persistence.NewPgxProvider(
 		config.DBDatabase,
 		config.DBPassword,
 		config.DBUsername,
@@ -45,17 +48,18 @@ func NewServer(config utils.AppEnvConfig, tracer *trace.TracerProvider) *http.Se
 	)
 
 	newServer := &Server{
-		port: port,
-		tracer: tracer,
-		db:   provider,
+		Port: port,
+		Tracer: tracer,
+		DB:   provider,
+		EncryptionKey: config.EncryptionKeyBytes,
 	}
 
-	newServer.RegisterCustomValidators()
-	newServer.RegisterControllers()
+	newServer.registerCustomValidators()
+	newServer.registerControllers()
 
 	server := &http.Server{
-		Addr:         fmt.Sprintf(":%d", newServer.port),
-		Handler:      newServer.RegisterRoutes(),
+		Addr:         fmt.Sprintf(":%d", newServer.Port),
+		Handler:      newServer.registerRoutes(),
 		IdleTimeout:  time.Minute,
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 30 * time.Second,
@@ -64,32 +68,31 @@ func NewServer(config utils.AppEnvConfig, tracer *trace.TracerProvider) *http.Se
 	return server
 }
 
-func (s *Server) RegisterCustomValidators() {
+func (s *Server) registerCustomValidators() {
 	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
-		v.RegisterValidation("cargoKind", validators.IsValidCargoKind)
+		v.RegisterValidation("cargoKind", validators.IsCargoKindValid)
 	}
 }
 
-func (s *Server) RegisterControllers() {
-	s.healthController = health.NewHealthController(s.db)
-	s.customersController = customers.NewCustomersController(s.db)
+func (s *Server) registerControllers() {
+	s.HealthController = controllers.NewHealthController(s.DB)
+	s.CustomersController = controllers.NewCustomersController(s.EncryptionKey, s.DB)
 }
 
-func (s *Server) RegisterRoutes() http.Handler {
-	r := gin.Default()
+func (s *Server) registerRoutes() http.Handler {
+	router := gin.Default()
 
 	// Health-check
-	r.GET("/health", s.healthController.Index)
+	router.GET("/health", s.HealthController.Index)
 
-	// Customers
-	customers := r.Group("/customers")
+	customers := router.Group("/customers")
 	{
 		customers.GET(
 			"/:apiKey",
-			s.customersController.GetOneByApiKey,
+			s.CustomersController.GetOneByApiKey,
 		)
-		customers.POST("/", s.customersController.Create)
+		customers.POST("/", s.CustomersController.Create)
 	}
 
-	return r
+	return router
 }
