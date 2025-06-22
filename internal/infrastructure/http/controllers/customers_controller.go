@@ -30,13 +30,10 @@ func NewCustomersController(encrytionKey []byte, tracer trace.Tracer, db persist
 }
 
 func (cc *CustomersController) Create(c *gin.Context) {
-	ctx, span := cc.tracer.Start(c.Request.Context(), "Create-Customer-Span")
-	defer span.End()
+	requestCtx := c.Request.Context()
 
 	dto := &dtos.CreateCustomerInput{}
-
 	err := c.BindJSON(&dto)
-
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Invalid payload",
@@ -56,7 +53,10 @@ func (cc *CustomersController) Create(c *gin.Context) {
 		apiKeyGen,
 	)
 
-	customer, err := useCase.Execute(ctx, dto)
+
+	traceCtx, span := cc.tracer.Start(requestCtx, "CreateCustomerUseCaseImpl.Execute")
+	customer, err := useCase.Execute(traceCtx, dto)
+	span.End()
 	if err != nil {
 		switch e := err.(type) {
 		case shared.DomainError:
@@ -85,7 +85,7 @@ func (cc *CustomersController) Create(c *gin.Context) {
 	c.JSON(http.StatusCreated, payload)
 }
 
-func (cc *CustomersController) GetOneByApiKey(c *gin.Context) {
+func (cc *CustomersController) GetOneByAPIKey(c *gin.Context) {
 	apiKey := c.Param("apiKey")
 
 	repository := repoImpl.NewPgCustomersRepository(cc.db)

@@ -19,6 +19,9 @@ type SaveCustomerInput struct {
 	Name string
 	BusinessIdentifier string
 	APIKey string
+	CreatedAt *time.Time
+	ModifiedAt *time.Time
+	DeletedAt *time.Time
 }
 
 type CustomerOutput struct {

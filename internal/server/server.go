@@ -13,6 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/validator/v10"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/marechal-dev/RouteBastion-Broker/internal/infrastructure/persistence"
@@ -82,6 +83,7 @@ func (s *Server) registerControllers() {
 
 func (s *Server) registerRoutes() http.Handler {
 	router := gin.Default()
+	router.Use(otelgin.Middleware("Broker-API"))
 
 	// Health-check
 	router.GET("/health", s.HealthController.Index)
@@ -90,7 +92,7 @@ func (s *Server) registerRoutes() http.Handler {
 	{
 		customers.GET(
 			"/:apiKey",
-			s.CustomersController.GetOneByApiKey,
+			s.CustomersController.GetOneByAPIKey,
 		)
 		customers.POST("/", s.CustomersController.Create)
 	}

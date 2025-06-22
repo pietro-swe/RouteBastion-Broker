@@ -41,7 +41,7 @@ func (r *PgCustomersRepository) Create(ctx context.Context, input *dtos.SaveCust
 }
 
 func (r *PgCustomersRepository) GetOneByAPIKey(ctx context.Context, apiKey string) *dtos.CustomerOutput {
-	row, err := r.queries.GetCustomerByApiKey(context.Background(), apiKey)
+	row, err := r.queries.GetCustomerByApiKey(ctx, apiKey)
 
 	if err != nil {
 		return nil
@@ -56,7 +56,7 @@ func (r *PgCustomersRepository) GetOneByBusinessIdentifier(
 	businessIdentifier string,
 ) (*dtos.CustomerOutput, error) {
 	row, err := r.queries.GetOneCustomerByBusinessIdentifier(
-		context.Background(),
+		ctx,
 		businessIdentifier,
 	)
 

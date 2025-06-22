@@ -75,11 +75,16 @@ func (uc *CreateCustomerUseCaseImpl) Execute(
 				}
 			}
 
+			now := time.Now()
+
 			customerInput := &dtos.SaveCustomerInput{
 				ID: uuid.NewV4(),
 				Name: dto.Name,
 				BusinessIdentifier: dto.BusinessIdentifier,
 				APIKey: hashed,
+				CreatedAt: &now,
+				ModifiedAt: nil,
+				DeletedAt: nil,
 			}
 
 			err = uc.repo.Create(txCtx, customerInput)
@@ -94,7 +99,7 @@ func (uc *CreateCustomerUseCaseImpl) Execute(
 				ID: uuid.NewV4(),
 				APIKey: hashed,
 				CustomerID: customerInput.ID,
-				CreatedAt: &time.Time{},
+				CreatedAt: &now,
 				ModifiedAt: nil,
 				DeletedAt: nil,
 			})
@@ -105,7 +110,15 @@ func (uc *CreateCustomerUseCaseImpl) Execute(
 				}
 			}
 
-			return customer, nil
+			return &dtos.CustomerOutput{
+				ID: customerInput.ID,
+				Name: customerInput.Name,
+				BusinessIdentifier: customerInput.BusinessIdentifier,
+				APIKey: customerInput.APIKey,
+				CreatedAt: customerInput.CreatedAt,
+				ModifiedAt: customerInput.ModifiedAt,
+				DeletedAt: customerInput.DeletedAt,
+			}, nil
 		},
 	)
 }
