@@ -1,3 +1,6 @@
+/*
+Package controllers provide HTTP Request Controllers for the Broker REST API
+*/
 package controllers
 
 import (
