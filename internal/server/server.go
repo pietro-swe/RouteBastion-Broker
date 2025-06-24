@@ -32,6 +32,7 @@ type Server struct {
 
 	HealthController    controllers.HealthController
 	CustomersController controllers.CustomersController
+	OptimizationsController controllers.OptimizationsController
 }
 
 func NewServer(config utils.AppEnvConfig, trace trace.Tracer) *http.Server {
@@ -79,6 +80,7 @@ func (s *Server) registerCustomValidators() {
 func (s *Server) registerControllers() {
 	s.HealthController = controllers.NewHealthController(s.DB)
 	s.CustomersController = controllers.NewCustomersController(s.EncryptionKey, s.Trace, s.DB)
+	s.OptimizationsController = controllers.NewOptimizationsController(s.Trace)
 }
 
 func (s *Server) registerRoutes() http.Handler {
@@ -95,6 +97,11 @@ func (s *Server) registerRoutes() http.Handler {
 			s.CustomersController.GetOneByAPIKey,
 		)
 		customers.POST("/", s.CustomersController.Create)
+	}
+
+	optimizations := router.Group("/optimizations")
+	{
+		optimizations.GET("/sync", s.OptimizationsController.Optimize)
 	}
 
 	return router
