@@ -23,3 +23,6 @@ tmp
 
 # Project-local glide cache, RE: https://github.com/Masterminds/glide/issues/736
 .glide/
+
+# Pycache
+tests/load/__pycache__

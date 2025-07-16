@@ -26,8 +26,8 @@ func (oc *OptimizationsController) Optimize(c *gin.Context) {
 	// client := clients.GoogleCloudClient{}
 
 	_, span := oc.tracer.Start(requestCtx, "CloudClientSimulator.Optimize")
-	// client.Optimize(&dtos.OptimizationRequestInput{})
-	time.Sleep(time.Microsecond * 10)
+	// Temp
+	time.Sleep(time.Millisecond * 10)
 	span.End()
 
 	c.JSON(http.StatusOK, gin.H{
