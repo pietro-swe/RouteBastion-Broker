@@ -8,6 +8,8 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"go.opentelemetry.io/otel/trace"
+
 	"github.com/marechal-dev/RouteBastion-Broker/internal/application/dtos"
 	usecases "github.com/marechal-dev/RouteBastion-Broker/internal/application/use_cases"
 	cryptoImpl "github.com/marechal-dev/RouteBastion-Broker/internal/infrastructure/cryptography/implementations"
@@ -15,20 +17,21 @@ import (
 	"github.com/marechal-dev/RouteBastion-Broker/internal/infrastructure/persistence"
 	repoImpl "github.com/marechal-dev/RouteBastion-Broker/internal/infrastructure/persistence/repositories/implementations"
 	"github.com/marechal-dev/RouteBastion-Broker/internal/shared"
-	"go.opentelemetry.io/otel/trace"
 )
 
 type CustomersController struct {
-	encrytionKey []byte
-	tracer trace.Tracer
-	db persistence.DBProvider
+	deps CustomersControllerDeps
 }
 
-func NewCustomersController(encrytionKey []byte, tracer trace.Tracer, db persistence.DBProvider) CustomersController {
+type CustomersControllerDeps struct {
+	EncrytionKey []byte
+	Tracer trace.Tracer
+	DB persistence.DBProvider
+}
+
+func NewCustomersController(deps CustomersControllerDeps) CustomersController {
 	return CustomersController{
-		encrytionKey: encrytionKey,
-		tracer: tracer,
-		db: db,
+		deps: deps,
 	}
 }
 
@@ -45,21 +48,21 @@ func (cc *CustomersController) Create(c *gin.Context) {
 		return
 	}
 
-	repository := repoImpl.NewPgCustomersRepository(cc.db)
+	repository := repoImpl.NewPgCustomersRepository(cc.deps.DB)
 	apiKeyGen := cryptoImpl.NewAPIKeyGenerator()
-	txManager := persistence.NewPgTxManager(cc.db.GetConn())
+	txManager := persistence.NewPgTxManager(cc.deps.DB.GetConn())
 
 	useCase := usecases.NewCreateCustomerUseCase(
 		txManager,
 		repository,
-		cc.encrytionKey,
+		cc.deps.EncrytionKey,
 		apiKeyGen,
 	)
 
-
-	traceCtx, span := cc.tracer.Start(requestCtx, "CreateCustomerUseCaseImpl.Execute")
+	traceCtx, span := cc.deps.Tracer.Start(requestCtx, "CreateCustomerUseCaseImpl.Execute")
 	customer, err := useCase.Execute(traceCtx, dto)
 	span.End()
+
 	if err != nil {
 		switch e := err.(type) {
 		case shared.DomainError:
@@ -91,7 +94,7 @@ func (cc *CustomersController) Create(c *gin.Context) {
 func (cc *CustomersController) GetOneByAPIKey(c *gin.Context) {
 	apiKey := c.Param("apiKey")
 
-	repository := repoImpl.NewPgCustomersRepository(cc.db)
+	repository := repoImpl.NewPgCustomersRepository(cc.deps.DB)
 	useCase := usecases.NewGetOneCustomerUseCaseImpl(repository)
 
 	foundCustomer := useCase.Execute(apiKey)
@@ -99,7 +102,7 @@ func (cc *CustomersController) GetOneByAPIKey(c *gin.Context) {
 	if foundCustomer == nil {
 		message := fmt.Sprintf("customer for API key %s not found", apiKey)
 
-		c.JSON(http.StatusNotFound, map[string]string{
+		c.JSON(http.StatusNotFound, gin.H{
 			"error": message,
 		})
 

@@ -6,6 +6,7 @@ package dtos
 import (
 	"time"
 
+	"github.com/marechal-dev/RouteBastion-Broker/internal/application/enums"
 	uuid "github.com/satori/go.uuid"
 )
 
@@ -57,22 +58,61 @@ type GetAllVehiclesByAPIKey struct {
 	APIKey string
 }
 
-type WaypointInput struct {
-	Lat  float64 `json:"lat"  binding:"required,number"`
-	Long float64 `json:"long" binding:"required,number"`
+type Point struct {
+	Latitude float64 `json:"latitude" binding:"required,number"`
+	Longitude float64 `json:"longitude" binding:"required,number"`
 }
 
-type VehicleInput struct {
-	ID        string  `json:"id"        binding:"required,uuid4"`
-	StartLat  float64 `json:"startLat"  binding:"required,number"`
-	StartLong float64 `json:"startLong" binding:"required,number"`
-	EndLat    float64 `json:"endLat"    binding:"required,number"`
-	EndLong   float64 `json:"endLong"   binding:"required,number"`
+type Shipment struct {
+	ID string `json:"id" binding:"required"`
+	Pickup Point
+	Delivery Point
+}
+
+type Vehicle struct {
+	ID string  `json:"id" binding:"required"`
+	Start Point `json:"start" binding:"required"`
+	End *Point `json:"end" binding:"required"`
+}
+
+type RouteStep struct {
+	ShipmentID string `json:"shipmentID"`
+	Kind enums.RouteStepKind `json:"kind"`
+	Location   Point `json:"location"`
 }
 
 type OptimizationRequestInput struct {
-	Pickups    []WaypointInput `json:"pickups"    binding:"required"`
-	Deliveries []WaypointInput `json:"deliveries" binding:"required"`
-	Vehicles   []VehicleInput  `json:"vehicles"   binding:"required"`
+	Shipments []Shipment `json:"shipments" binding:"required"`
+	Vehicles []Vehicle  `json:"vehicles" binding:"required"`
 }
 
+type OptimizationRequestOutput struct {
+	VehicleID string `json:"vehicleID"`
+	Steps []RouteStep `json:"steps"`
+	TotalDistanceInKilometers float64 `json:"totalDistanceInKilometers"`
+}
+
+type GoogleFleetRoutingResponse struct {
+	Routes []GoogleRoute `json:"routes"`
+}
+
+type GoogleRoute struct {
+	VehicleIndex            int                 `json:"vehicleIndex"`
+	RouteTotalDistanceMeters int                `json:"routeTotalDistanceMeters"`
+	Visits                  []GoogleVisit       `json:"visits"`
+}
+
+type GoogleVisit struct {
+	ShipmentIndex int              `json:"shipmentIndex"`
+	Type          string           `json:"type"` // "PICKUP" or "DELIVERY"
+	Waypoint      GoogleWaypoint   `json:"waypoint"`
+}
+
+type GoogleWaypoint struct {
+	LatLng GoogleLatLng `json:"latLng"`
+}
+
+type GoogleLatLng struct {
+	Latitude  float64 `json:"latitude"`
+	Longitude float64 `json:"longitude"`
+}

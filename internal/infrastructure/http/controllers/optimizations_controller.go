@@ -2,10 +2,9 @@ package controllers
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/marechal-dev/RouteBastion-Broker/internal/application/dtos"
-	clients "github.com/marechal-dev/RouteBastion-Broker/internal/infrastructure/clients/implementations"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -24,10 +23,11 @@ func NewOptimizationsController(
 func (oc *OptimizationsController) Optimize(c *gin.Context) {
 	requestCtx := c.Request.Context()
 
-	client := clients.GoogleCloudClient{}
+	// client := clients.GoogleCloudClient{}
 
-	_, span := oc.tracer.Start(requestCtx, "GoogleCloudClient.Optimize")
-	client.Optimize(&dtos.OptimizationRequestInput{})
+	_, span := oc.tracer.Start(requestCtx, "CloudClientSimulator.Optimize")
+	// client.Optimize(&dtos.OptimizationRequestInput{})
+	time.Sleep(time.Microsecond * 10)
 	span.End()
 
 	c.JSON(http.StatusOK, gin.H{

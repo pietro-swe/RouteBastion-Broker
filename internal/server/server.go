@@ -16,17 +16,16 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/marechal-dev/RouteBastion-Broker/internal/infrastructure/persistence"
-
 	"github.com/marechal-dev/RouteBastion-Broker/internal/infrastructure/http/controllers"
 	"github.com/marechal-dev/RouteBastion-Broker/internal/infrastructure/http/validators"
+	"github.com/marechal-dev/RouteBastion-Broker/internal/infrastructure/persistence"
 	"github.com/marechal-dev/RouteBastion-Broker/internal/utils"
 )
 
 type Server struct {
 	Port int
-	EncryptionKey []byte
 
+	EncryptionKey []byte
 	Trace trace.Tracer
 	DB persistence.DBProvider
 
@@ -79,29 +78,38 @@ func (s *Server) registerCustomValidators() {
 
 func (s *Server) registerControllers() {
 	s.HealthController = controllers.NewHealthController(s.DB)
-	s.CustomersController = controllers.NewCustomersController(s.EncryptionKey, s.Trace, s.DB)
+	s.CustomersController = controllers.NewCustomersController(controllers.CustomersControllerDeps{
+		EncrytionKey: s.EncryptionKey,
+		Tracer: s.Trace,
+		DB: s.DB,
+	})
 	s.OptimizationsController = controllers.NewOptimizationsController(s.Trace)
 }
 
 func (s *Server) registerRoutes() http.Handler {
 	router := gin.Default()
-	router.Use(otelgin.Middleware("Broker-API"))
+
+	// Middlewares
+	router.Use(otelgin.Middleware("Broker-REST-API"))
 
 	// Health-check
 	router.GET("/health", s.HealthController.Index)
 
-	customers := router.Group("/customers")
+	v1 := router.Group("/v1")
 	{
-		customers.GET(
-			"/:apiKey",
-			s.CustomersController.GetOneByAPIKey,
-		)
-		customers.POST("/", s.CustomersController.Create)
-	}
+		customers := v1.Group("/customers")
+		{
+			customers.GET(
+				"/:apiKey",
+				s.CustomersController.GetOneByAPIKey,
+			)
+			customers.POST("/", s.CustomersController.Create)
+		}
 
-	optimizations := router.Group("/optimizations")
-	{
-		optimizations.GET("/sync", s.OptimizationsController.Optimize)
+		optimizations := v1.Group("/optimizations")
+		{
+			optimizations.GET("/sync", s.OptimizationsController.Optimize)
+		}
 	}
 
 	return router
