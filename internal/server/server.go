@@ -16,7 +16,8 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/marechal-dev/RouteBastion-Broker/internal/infrastructure/http/controllers"
+	"github.com/marechal-dev/RouteBastion-Broker/internal/infrastructure/http/handlers"
+	"github.com/marechal-dev/RouteBastion-Broker/internal/infrastructure/http/middlewares"
 	"github.com/marechal-dev/RouteBastion-Broker/internal/infrastructure/http/validators"
 	"github.com/marechal-dev/RouteBastion-Broker/internal/infrastructure/persistence"
 	"github.com/marechal-dev/RouteBastion-Broker/internal/utils"
@@ -28,10 +29,6 @@ type Server struct {
 	EncryptionKey []byte
 	Trace trace.Tracer
 	DB persistence.DBProvider
-
-	HealthController    controllers.HealthController
-	CustomersController controllers.CustomersController
-	OptimizationsController controllers.OptimizationsController
 }
 
 func NewServer(config utils.AppEnvConfig, trace trace.Tracer) *http.Server {
@@ -57,7 +54,6 @@ func NewServer(config utils.AppEnvConfig, trace trace.Tracer) *http.Server {
 	}
 
 	newServer.registerCustomValidators()
-	newServer.registerControllers()
 
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%d", newServer.Port),
@@ -76,16 +72,6 @@ func (s *Server) registerCustomValidators() {
 	}
 }
 
-func (s *Server) registerControllers() {
-	s.HealthController = controllers.NewHealthController(s.DB)
-	s.CustomersController = controllers.NewCustomersController(controllers.CustomersControllerDeps{
-		EncrytionKey: s.EncryptionKey,
-		Tracer: s.Trace,
-		DB: s.DB,
-	})
-	s.OptimizationsController = controllers.NewOptimizationsController(s.Trace)
-}
-
 func (s *Server) registerRoutes() http.Handler {
 	router := gin.Default()
 
@@ -93,7 +79,7 @@ func (s *Server) registerRoutes() http.Handler {
 	router.Use(otelgin.Middleware("Broker-REST-API"))
 
 	// Health-check
-	router.GET("/health", s.HealthController.Index)
+	router.GET("/health", handlers.MakeHealthCheckHandler(s.DB))
 
 	v1 := router.Group("/v1")
 	{
@@ -101,14 +87,20 @@ func (s *Server) registerRoutes() http.Handler {
 		{
 			customers.GET(
 				"/:apiKey",
-				s.CustomersController.GetOneByAPIKey,
+				handlers.MakeGetOneByAPIKeyHandler(s.DB),
 			)
-			customers.POST("/", s.CustomersController.Create)
+
+			customers.POST("/", handlers.MakeCreateCustomerHandler(
+				s.EncryptionKey,
+				s.Trace,
+				s.DB,
+			))
 		}
 
 		optimizations := v1.Group("/optimizations")
+		optimizations.Use(middlewares.WithValidAPIKey(s.DB))
 		{
-			optimizations.GET("/sync", s.OptimizationsController.Optimize)
+			optimizations.GET("/sync", handlers.MakeOptimizeSyncHandler(s.Trace))
 		}
 	}
 

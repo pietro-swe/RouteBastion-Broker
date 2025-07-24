@@ -18,7 +18,7 @@ import (
 )
 
 type CreateCustomerUseCase interface {
-	Execute(ctx context.Context, dto *dtos.CreateCustomerInput) (*dtos.CustomerOutput, error)
+	Execute(ctx context.Context, dto dtos.CreateCustomerInput) (*dtos.CustomerOutput, error)
 }
 
 type CreateCustomerUseCaseImpl struct {
@@ -33,8 +33,8 @@ func NewCreateCustomerUseCase(
 	repo repositories.CustomersRepository,
 	key []byte,
 	hashGen cryptography.HashGenerator,
-) *CreateCustomerUseCaseImpl {
-	return &CreateCustomerUseCaseImpl{
+) CreateCustomerUseCaseImpl {
+	return CreateCustomerUseCaseImpl{
 		tx:   tx,
 		repo: repo,
 		key: key,
@@ -44,7 +44,7 @@ func NewCreateCustomerUseCase(
 
 func (uc *CreateCustomerUseCaseImpl) Execute(
 	ctx context.Context,
-	dto *dtos.CreateCustomerInput,
+	dto dtos.CreateCustomerInput,
 ) (*dtos.CustomerOutput, error) {
 	customer, err := uc.repo.GetOneByBusinessIdentifier(ctx, dto.BusinessIdentifier)
 

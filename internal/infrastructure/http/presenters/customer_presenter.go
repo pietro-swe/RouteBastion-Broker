@@ -16,7 +16,7 @@ type CustomerPresenter struct {
 	CreatedAt          *time.Time `json:"createdAt"`
 }
 
-func CustomerFromDomain(customer *dtos.CustomerOutput) *CustomerPresenter {
+func CustomerToHTTP(customer *dtos.CustomerOutput) *CustomerPresenter {
 	return &CustomerPresenter{
 		Name:               customer.Name,
 		BusinessIdentifier: customer.BusinessIdentifier,
