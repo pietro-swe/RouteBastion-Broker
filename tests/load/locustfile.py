@@ -1,6 +1,6 @@
-from locust import HttpUser, task
+from locust import FastHttpUser, task
 
-class BrokerApiUser(HttpUser):
+class BrokerApiUser(FastHttpUser):
   @task
   def optimize(self):
     self.client.get("/v1/optimizations/sync")

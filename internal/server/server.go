@@ -17,7 +17,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/marechal-dev/RouteBastion-Broker/internal/infrastructure/http/handlers"
-	"github.com/marechal-dev/RouteBastion-Broker/internal/infrastructure/http/middlewares"
+	// "github.com/marechal-dev/RouteBastion-Broker/internal/infrastructure/http/middlewares"
 	"github.com/marechal-dev/RouteBastion-Broker/internal/infrastructure/http/validators"
 	"github.com/marechal-dev/RouteBastion-Broker/internal/infrastructure/persistence"
 	"github.com/marechal-dev/RouteBastion-Broker/internal/utils"
@@ -98,7 +98,7 @@ func (s *Server) registerRoutes() http.Handler {
 		}
 
 		optimizations := v1.Group("/optimizations")
-		optimizations.Use(middlewares.WithValidAPIKey(s.DB))
+		// optimizations.Use(middlewares.WithValidAPIKey(s.DB))
 		{
 			optimizations.GET("/sync", handlers.MakeOptimizeSyncHandler(s.Trace))
 		}
