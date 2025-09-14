@@ -8,8 +8,8 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/pietro-swe/RouteBastion-Broker/internal/shared"
 	"github.com/pietro-swe/RouteBastion-Broker/pkg/crypto"
+	"github.com/pietro-swe/RouteBastion-Broker/pkg/customerrors"
 	"github.com/pietro-swe/RouteBastion-Broker/pkg/dbutils"
-	customErrors "github.com/pietro-swe/RouteBastion-Broker/pkg/errors"
 	uuid "github.com/satori/go.uuid"
 )
 
@@ -23,15 +23,15 @@ func CreateCustomer(
 	customer, err := store.GetOneByBusinessIdentifier(ctx, input.BusinessIdentifier)
 
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		return nil, customErrors.InfrastructureError{
-			Code: customErrors.ErrCodeDatabaseFailure,
+		return nil, customerrors.InfrastructureError{
+			Code: customerrors.ErrCodeDatabaseFailure,
 			Msg:  err.Error(),
 		}
 	}
 
 	if customer != nil {
-		return nil, customErrors.ApplicationError{
-			Code: customErrors.ErrCodeConflict,
+		return nil, customerrors.ApplicationError{
+			Code: customerrors.ErrCodeConflict,
 			Msg:  "customer already exists",
 		}
 	}
@@ -43,8 +43,8 @@ func CreateCustomer(
 			rawKey := uuid.NewV4().String()
 			hashed, err := keyGen.Generate(rawKey)
 			if err != nil {
-				return nil, customErrors.InfrastructureError{
-					Code: customErrors.ErrCodeEncryptionFailure,
+				return nil, customerrors.InfrastructureError{
+					Code: customerrors.ErrCodeEncryptionFailure,
 					Msg:  err.Error(),
 				}
 			}
@@ -73,8 +73,8 @@ func CreateCustomer(
 
 			err = store.Create(txCtx, customerInput)
 			if err != nil {
-				return nil, customErrors.InfrastructureError{
-					Code: customErrors.ErrCodeDatabaseFailure,
+				return nil, customerrors.InfrastructureError{
+					Code: customerrors.ErrCodeDatabaseFailure,
 					Msg:  err.Error(),
 				}
 			}
@@ -88,8 +88,8 @@ func CreateCustomer(
 				DeletedAt:  nil,
 			})
 			if err != nil {
-				return nil, customErrors.InfrastructureError{
-					Code: customErrors.ErrCodeDatabaseFailure,
+				return nil, customerrors.InfrastructureError{
+					Code: customerrors.ErrCodeDatabaseFailure,
 					Msg:  err.Error(),
 				}
 			}
@@ -107,8 +107,8 @@ func GetOneCustomerByAPIKey(
 	customer, err := store.GetOneByAPIKey(ctx, apiKey)
 
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		return nil, customErrors.InfrastructureError{
-			Code: customErrors.ErrCodeDatabaseFailure,
+		return nil, customerrors.InfrastructureError{
+			Code: customerrors.ErrCodeDatabaseFailure,
 			Msg:  err.Error(),
 		}
 	}

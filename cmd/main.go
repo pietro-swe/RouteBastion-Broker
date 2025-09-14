@@ -8,9 +8,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/pietro-swe/RouteBastion-Broker/internal/infra/server"
 	"github.com/pietro-swe/RouteBastion-Broker/pkg/env"
 	"github.com/pietro-swe/RouteBastion-Broker/pkg/instrumentation"
+	"github.com/pietro-swe/RouteBastion-Broker/pkg/server"
 	"go.opentelemetry.io/otel"
 )
 

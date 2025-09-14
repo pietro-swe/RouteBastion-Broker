@@ -8,7 +8,7 @@ import (
 	"github.com/pietro-swe/RouteBastion-Broker/internal/infra/db"
 	"github.com/pietro-swe/RouteBastion-Broker/internal/shared"
 	"github.com/pietro-swe/RouteBastion-Broker/pkg/crypto"
-	"github.com/pietro-swe/RouteBastion-Broker/pkg/errors"
+	"github.com/pietro-swe/RouteBastion-Broker/pkg/customerrors"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -46,15 +46,15 @@ func MakeCreateCustomerHandler(
 
 		if err != nil {
 			switch e := err.(type) {
-			case errors.DomainError:
+			case customerrors.DomainError:
 				c.JSON(http.StatusBadRequest, gin.H{
 					"error": e.Error(),
 				})
-			case errors.ApplicationError:
+			case customerrors.ApplicationError:
 				c.JSON(http.StatusBadRequest, gin.H{
 					"error": e.Error(),
 				})
-			case errors.InfrastructureError:
+			case customerrors.InfrastructureError:
 			default:
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": e.Error(),
@@ -96,15 +96,15 @@ func MakeGetOneByAPIKeyHandler(
 
 		if err != nil {
 			switch e := err.(type) {
-			case errors.DomainError:
+			case customerrors.DomainError:
 				c.JSON(http.StatusBadRequest, gin.H{
 					"error": e.Error(),
 				})
-			case errors.ApplicationError:
+			case customerrors.ApplicationError:
 				c.JSON(http.StatusBadRequest, gin.H{
 					"error": e.Error(),
 				})
-			case errors.InfrastructureError:
+			case customerrors.InfrastructureError:
 			default:
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": e.Error(),
