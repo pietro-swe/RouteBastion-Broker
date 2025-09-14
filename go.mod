@@ -1,17 +1,20 @@
-module github.com/marechal-dev/RouteBastion-Broker
+module github.com/pietro-swe/RouteBastion-Broker
 
-go 1.24.4
+go 1.25.1
 
 require (
+	cloud.google.com/go/maps v1.21.0
 	github.com/exaring/otelpgx v0.9.3
 	github.com/gin-gonic/gin v1.10.1
 	github.com/jackc/pgx/v5 v5.7.4
+	github.com/marechal-dev/RouteBastion-Broker v0.0.0-20250802222811-a1240ea903cc
 	github.com/satori/go.uuid v1.2.0
 	github.com/spf13/viper v1.19.0
 	go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin v0.61.0
 	go.opentelemetry.io/otel v1.36.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.36.0
 	go.opentelemetry.io/otel/sdk v1.36.0
+	google.golang.org/genproto v0.0.0-20250603155806-513f23925822
 )
 
 require (
@@ -20,7 +23,6 @@ require (
 	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect
 	cloud.google.com/go/compute/metadata v0.6.0 // indirect
 	cloud.google.com/go/longrunning v0.6.7 // indirect
-	cloud.google.com/go/maps v1.21.0 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.2 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
@@ -32,7 +34,6 @@ require (
 	golang.org/x/oauth2 v0.30.0 // indirect
 	golang.org/x/time v0.11.0 // indirect
 	google.golang.org/api v0.232.0 // indirect
-	google.golang.org/genproto v0.0.0-20250603155806-513f23925822 // indirect
 )
 
 require (

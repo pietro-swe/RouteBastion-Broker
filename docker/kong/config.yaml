@@ -2,22 +2,32 @@ _format_version: "3.0"
 _transform: true
 
 services:
-  - name: broker
-    url: http://host.docker.internal:8080
-    protocol: http
+  - name: Broker
     host: host.docker.internal
-    port: 8080
+    protocol: http
     path: "/"
     connect_timeout: 10000
     retries: 3
     routes:
-      - name: "api-broker"
+      - name: "Broker-API"
         protocols:
           - http
           - https
         paths:
           - "/health"
-          - "/customers"
+          - "/v1/customers"
+          - "/v1/optimizations"
+        strip_path: false
+
+upstreams:
+  - name: host.docker.internal
+    slots: 10
+    algorithm: round-robin
+    targets:
+      - target: host.docker.internal:8080
+        weight: 100
+      # - target: host.docker.internal:8081
+      #   weight: 100
 
 plugins:
   - name: cors
@@ -36,19 +46,3 @@ plugins:
         - Accept
         - Content-Type
         - RouteBastion-API-Key
-
-  - name: key-auth
-    enabled: true
-    protocols:
-      - grpc
-      - grpcs
-      - http
-      - https
-    config:
-      hide_credentials: false
-      key_in_body: false
-      key_in_query: false
-      key_in_header: true
-      key_names:
-        - RouteBastion-API-Key
-      run_on_preflight: true

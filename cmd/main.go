@@ -2,16 +2,15 @@ package main
 
 import (
 	"context"
-	"encoding/base64"
 	"log"
 	"net/http"
 	"os/signal"
 	"syscall"
 	"time"
 
-	"github.com/marechal-dev/RouteBastion-Broker/internal/server"
-	"github.com/marechal-dev/RouteBastion-Broker/internal/server/instrumentation"
-	"github.com/marechal-dev/RouteBastion-Broker/internal/utils"
+	"github.com/pietro-swe/RouteBastion-Broker/internal/infra/server"
+	"github.com/pietro-swe/RouteBastion-Broker/pkg/env"
+	"github.com/pietro-swe/RouteBastion-Broker/pkg/instrumentation"
 	"go.opentelemetry.io/otel"
 )
 
@@ -37,17 +36,15 @@ func gracefulShutdown(apiServer *http.Server, done chan bool) {
 func main() {
 	ctx := context.Background()
 
-	config, err := utils.LoadConfig(".")
+	config, err := env.LoadConfig(".")
 	if err != nil {
 		log.Fatalf("[Broker] could not load config: %v", err)
 	}
 
-	encryptionKeyBytes, err := base64.StdEncoding.DecodeString(config.EncryptionKey)
+	err = config.LoadEncryptionKeyBytes()
 	if err != nil {
 		log.Fatalf("[Broker] failed to decode encryption key: %v", err)
 	}
-
-	config.EncryptionKeyBytes = encryptionKeyBytes
 
 	exporter, err := instrumentation.InitExporter(config)
 	if err != nil {
@@ -64,7 +61,7 @@ func main() {
 		tracerProvider.Shutdown(ctx)
 	}()
 
-	server := server.NewServer(config, tracer)
+	server := server.NewHTTPServer(config, tracer)
 
 	done := make(chan bool, 1)
 

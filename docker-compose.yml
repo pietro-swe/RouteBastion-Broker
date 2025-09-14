@@ -41,8 +41,6 @@ services:
       - "KONG_ADMIN_LISTEN=0.0.0.0:8001"
       - "KONG_ADMIN_GUI_URL=http://localhost:8002"
       - "KONG_DECLARATIVE_CONFIG=/kong/config.yaml"
-      # - "KONG_PG_HOST=kong-database:5433"
-      # - "KONG_PG_PASSWORD=kong"
       - "KONG_PROXY_ACCESS_LOG=/dev/stdout"
       - "KONG_ADMIN_ACCESS_LOG=/dev/stdout"
       - "KONG_PROXY_ERROR_LOG=/dev/stderr"
@@ -51,9 +49,6 @@ services:
       - "host.docker.internal:host-gateway"
     volumes:
       - "./docker/kong/config.yaml:/kong/config.yaml"
-    # depends_on:
-    #   kong-database:
-    #     condition: service_healthy
     ports:
       - "8000:8000" # Proxy
       - "8001:8001" # API (Admin)
@@ -61,13 +56,14 @@ services:
       - "8443:8443" # Proxy SSL (HTTPS)
       - "8444:8444" # API (Admin) (HTTPS)
 
-  api-dev:
-    container_name: 'api-broker-dev'
+  api-broker:
     build:
       context: .
       dockerfile: build/app.dev.Dockerfile
+    deploy:
+      replicas: 1
     ports:
-      - 8080:8080
+      - 8080-8081:8080
     depends_on:
       database:
         condition: service_healthy
@@ -110,15 +106,15 @@ services:
     volumes:
       - 'cache_data:/data'
 
-  jaeger:
-    image: jaegertracing/all-in-one:1.57
-    container_name: 'jaeger'
-    environment:
-      - "COLLECTOR_OTLP_ENABLED=true"
-      - "COLLECTOR_ZIPKIN_HOST_PORT=:9411"
-    ports:
-      - "16686:16686" # UI
-      - "6831:6831/udp" # Traces UDP
-      - "14268:14268" # Traces HTTP
-      - "4317:4317" # OpenTelemetry/gRPC
-      - "4318:4318" # OpenTelemetry/HTTP
+  # jaeger:
+  #   image: jaegertracing/all-in-one:1.57
+  #   container_name: 'jaeger'
+  #   environment:
+  #     - "COLLECTOR_OTLP_ENABLED=true"
+  #     - "COLLECTOR_ZIPKIN_HOST_PORT=:9411"
+  #   ports:
+  #     - "16686:16686" # UI
+  #     - "6831:6831/udp" # Traces UDP
+  #     - "14268:14268" # Traces HTTP
+  #     - "4317:4317" # OpenTelemetry/gRPC
+  #     - "4318:4318" # OpenTelemetry/HTTP
