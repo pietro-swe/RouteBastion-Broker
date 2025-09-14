@@ -4,19 +4,18 @@ import (
 	"context"
 
 	routeoptimization "cloud.google.com/go/maps/routeoptimization/apiv1"
-	"github.com/marechal-dev/RouteBastion-Broker/internal/application/dtos"
-	"github.com/marechal-dev/RouteBastion-Broker/internal/application/enums"
+	"github.com/pietro-swe/RouteBastion-Broker/internal/shared"
 	"google.golang.org/genproto/googleapis/type/latlng"
 
 	rpb "cloud.google.com/go/maps/routeoptimization/apiv1/routeoptimizationpb"
 )
 
-type GoogleCloudClient struct {}
+type GoogleCloudClient struct{}
 
-func (gcc *GoogleCloudClient) OptimizeSync(ctx context.Context, input dtos.OptimizationRequestInput) ([]dtos.OptimizationRequestOutput, error) {
+func (gcc *GoogleCloudClient) OptimizeSync(ctx context.Context, input shared.OptimizationRequestInput) ([]shared.OptimizationRequestOutput, error) {
 	c, err := routeoptimization.NewClient(ctx)
 	if err != nil {
-		return make([]dtos.OptimizationRequestOutput, 0), err
+		return make([]shared.OptimizationRequestOutput, 0), err
 	}
 	defer c.Close()
 
@@ -26,25 +25,25 @@ func (gcc *GoogleCloudClient) OptimizeSync(ctx context.Context, input dtos.Optim
 		Parent: "projects/routebastion",
 		Model: &rpb.ShipmentModel{
 			Shipments: shipments,
-			Vehicles: vehicles,
+			Vehicles:  vehicles,
 		},
 	}
 
 	result, err := c.OptimizeTours(ctx, req)
 	if err != nil {
-		return make([]dtos.OptimizationRequestOutput, 0), err
+		return make([]shared.OptimizationRequestOutput, 0), err
 	}
 
 	mapped, err := gcc.mapGoogleResponseToInternal(result, input)
 	if err != nil {
-		return make([]dtos.OptimizationRequestOutput, 0), err
+		return make([]shared.OptimizationRequestOutput, 0), err
 	}
 
 	return mapped, nil
 }
 
 func (gcc *GoogleCloudClient) mapInternalInputToGoogleInput(
-	input dtos.OptimizationRequestInput,
+	input shared.OptimizationRequestInput,
 ) (
 	[]*rpb.Shipment,
 	[]*rpb.Vehicle,
@@ -58,23 +57,23 @@ func (gcc *GoogleCloudClient) mapInternalInputToGoogleInput(
 
 		pickup = append(pickup, &rpb.Shipment_VisitRequest{
 			ArrivalLocation: &latlng.LatLng{
-				Latitude: shipment.Pickup.Latitude,
+				Latitude:  shipment.Pickup.Latitude,
 				Longitude: shipment.Pickup.Longitude,
 			},
 		})
 
 		delivery = append(delivery, &rpb.Shipment_VisitRequest{
 			ArrivalLocation: &latlng.LatLng{
-				Latitude: shipment.Delivery.Latitude,
+				Latitude:  shipment.Delivery.Latitude,
 				Longitude: shipment.Delivery.Longitude,
 			},
 		})
 
 		shipments = append(shipments, &rpb.Shipment{
-			Label: shipment.ID,
+			Label:       shipment.ID,
 			DisplayName: shipment.ID,
-			Pickups: pickup,
-			Deliveries: delivery,
+			Pickups:     pickup,
+			Deliveries:  delivery,
 		})
 	}
 
@@ -83,7 +82,7 @@ func (gcc *GoogleCloudClient) mapInternalInputToGoogleInput(
 
 		if vehicle.End != nil {
 			endLocation = &latlng.LatLng{
-				Latitude: vehicle.End.Latitude,
+				Latitude:  vehicle.End.Latitude,
 				Longitude: vehicle.End.Longitude,
 			}
 		}
@@ -91,7 +90,7 @@ func (gcc *GoogleCloudClient) mapInternalInputToGoogleInput(
 		vehicles = append(vehicles, &rpb.Vehicle{
 			Label: vehicle.ID,
 			StartLocation: &latlng.LatLng{
-				Latitude: vehicle.Start.Latitude,
+				Latitude:  vehicle.Start.Latitude,
 				Longitude: vehicle.Start.Longitude,
 			},
 			EndLocation: endLocation,
@@ -102,68 +101,68 @@ func (gcc *GoogleCloudClient) mapInternalInputToGoogleInput(
 }
 
 func (gcc *GoogleCloudClient) mapGoogleResponseToInternal(
-    googleResponse *rpb.OptimizeToursResponse,
-    input dtos.OptimizationRequestInput,
-) ([]dtos.OptimizationRequestOutput, error) {
-    shipmentIndexToID := make(map[int]string)
-    for i, s := range input.Shipments {
-        shipmentIndexToID[i] = s.ID
-    }
+	googleResponse *rpb.OptimizeToursResponse,
+	input shared.OptimizationRequestInput,
+) ([]shared.OptimizationRequestOutput, error) {
+	shipmentIndexToID := make(map[int]string)
+	for i, s := range input.Shipments {
+		shipmentIndexToID[i] = s.ID
+	}
 
-		shipmentToID := make(map[string]dtos.Shipment)
-    for _, s := range input.Shipments {
-        shipmentToID[s.ID] = s
-    }
+	shipmentToID := make(map[string]shared.Shipment)
+	for _, s := range input.Shipments {
+		shipmentToID[s.ID] = s
+	}
 
-    vehicleIndexToID := make(map[int]string)
-    for i, v := range input.Vehicles {
-        vehicleIndexToID[i] = v.ID
-    }
+	vehicleIndexToID := make(map[int]string)
+	for i, v := range input.Vehicles {
+		vehicleIndexToID[i] = v.ID
+	}
 
-    var results []dtos.OptimizationRequestOutput
+	var results []shared.OptimizationRequestOutput
 
-    for _, route := range googleResponse.Routes {
-			vehicleID := vehicleIndexToID[int(route.VehicleIndex)]
+	for _, route := range googleResponse.Routes {
+		vehicleID := vehicleIndexToID[int(route.VehicleIndex)]
 
-			steps := make([]dtos.RouteStep, 0, len(route.Visits))
-			for _, visit := range route.Visits {
-					shipmentID := shipmentIndexToID[int(visit.ShipmentIndex)]
-					requestShipment := shipmentToID[shipmentID]
-					var stepType enums.RouteStepKind
+		steps := make([]shared.RouteStep, 0, len(route.Visits))
+		for _, visit := range route.Visits {
+			shipmentID := shipmentIndexToID[int(visit.ShipmentIndex)]
+			requestShipment := shipmentToID[shipmentID]
+			var stepType shared.RouteStepKind
 
-					if visit.IsPickup {
-						stepType = enums.Pickup
-					} else {
-						stepType = enums.Delivery
-					}
-
-					var lat float64
-					var long float64
-
-					if visit.IsPickup {
-						lat = requestShipment.Pickup.Latitude
-						long = requestShipment.Pickup.Longitude
-					} else {
-						lat = requestShipment.Delivery.Latitude
-						long = requestShipment.Delivery.Latitude
-					}
-
-					steps = append(steps, dtos.RouteStep{
-							ShipmentID: shipmentID,
-							Kind:       stepType,
-							Location: dtos.Point{
-									Latitude:  lat,
-									Longitude: long,
-							},
-					})
+			if visit.IsPickup {
+				stepType = shared.Pickup
+			} else {
+				stepType = shared.Delivery
 			}
 
-			results = append(results, dtos.OptimizationRequestOutput{
-				VehicleID:     vehicleID,
-				Steps:         steps,
-				TotalDistanceInKilometers: route.Metrics.TravelDistanceMeters / 1000.0, // meters → km
-			})
-    }
+			var lat float64
+			var long float64
 
-    return results, nil
+			if visit.IsPickup {
+				lat = requestShipment.Pickup.Latitude
+				long = requestShipment.Pickup.Longitude
+			} else {
+				lat = requestShipment.Delivery.Latitude
+				long = requestShipment.Delivery.Latitude
+			}
+
+			steps = append(steps, shared.RouteStep{
+				ShipmentID: shipmentID,
+				Kind:       stepType,
+				Location: shared.Point{
+					Latitude:  lat,
+					Longitude: long,
+				},
+			})
+		}
+
+		results = append(results, shared.OptimizationRequestOutput{
+			VehicleID:                 vehicleID,
+			Steps:                     steps,
+			TotalDistanceInKilometers: route.Metrics.TravelDistanceMeters / 1000.0, // meters → km
+		})
+	}
+
+	return results, nil
 }

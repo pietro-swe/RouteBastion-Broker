@@ -7,7 +7,6 @@ require (
 	github.com/exaring/otelpgx v0.9.3
 	github.com/gin-gonic/gin v1.10.1
 	github.com/jackc/pgx/v5 v5.7.4
-	github.com/marechal-dev/RouteBastion-Broker v0.0.0-20250802222811-a1240ea903cc
 	github.com/satori/go.uuid v1.2.0
 	github.com/spf13/viper v1.19.0
 	go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin v0.61.0

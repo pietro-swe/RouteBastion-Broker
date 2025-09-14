@@ -6,9 +6,9 @@ package clients
 import (
 	"context"
 
-	"github.com/marechal-dev/RouteBastion-Broker/internal/application/dtos"
+	"github.com/pietro-swe/RouteBastion-Broker/internal/shared"
 )
 
 type RouteOptimizationAPIClient interface {
-	OptimizeSync(ctx context.Context, input dtos.OptimizationRequestInput) ([]dtos.OptimizationRequestOutput, error)
+	OptimizeSync(ctx context.Context, input shared.OptimizationRequestInput) ([]shared.OptimizationRequestOutput, error)
 }

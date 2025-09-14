@@ -3,7 +3,6 @@ package shared
 import (
 	"time"
 
-	"github.com/pietro-swe/RouteBastion-Broker/internal/application/enums"
 	uuid "github.com/satori/go.uuid"
 )
 
@@ -73,9 +72,9 @@ type Vehicle struct {
 }
 
 type RouteStep struct {
-	ShipmentID string              `json:"shipmentID"`
-	Kind       enums.RouteStepKind `json:"kind"`
-	Location   Point               `json:"location"`
+	ShipmentID string        `json:"shipmentID"`
+	Kind       RouteStepKind `json:"kind"`
+	Location   Point         `json:"location"`
 }
 
 type OptimizationRequestInput struct {
