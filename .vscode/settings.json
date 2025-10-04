@@ -1,5 +1,0 @@
-{
-  "yaml.schemas": {
-    "https://json.schemastore.org/kong_json_schema.json": "file:///home/marechal-dev/Dev/Source/Personal/Backend/RouteBastion-Broker/docker/kong/config.yaml"
-  }
-}

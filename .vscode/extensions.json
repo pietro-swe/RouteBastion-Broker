@@ -1,0 +1,16 @@
+{
+  "recommendations": [
+    "docker.docker",
+    "ms-azuretools.vscode-containers",
+    "editorconfig.editorconfig",
+    "vadimcn.vscode-lldb",
+    "github.vscode-github-actions",
+    "golang.go",
+    "mechatroner.rainbow-csv",
+    "gruntfuggly.todo-tree",
+    "ms-python.python",
+    "redhat.vscode-yaml",
+    "ms-vscode-remote.remote-containers",
+    "ms-vscode-remote.remote-wsl"
+  ]
+}
