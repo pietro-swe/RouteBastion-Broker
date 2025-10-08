@@ -1,6 +1,7 @@
 tmp
 .git
 .github
+.vscode
 bin
 README.md
 app.env.example
