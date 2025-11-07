@@ -26,3 +26,4 @@ tmp
 
 # Pycache
 tests/load/__pycache__
+tests/load/*.csv

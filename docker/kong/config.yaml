@@ -27,7 +27,9 @@ upstreams:
       - target: host.docker.internal:8080
         weight: 100
       # - target: host.docker.internal:8081
-      #   weight: 100
+      # weight: 100
+      # - target: host.docker.internal:8082
+      # weight: 100
 
 plugins:
   - name: cors

@@ -13,10 +13,9 @@ func MakeOptimizeSyncHandler(
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
-		traceCtx, span := tracer.Start(ctx, "optimization.OptimizeSync")
-		_, err := OptimizeSync(traceCtx)
-		span.End()
-
+		// traceCtx, span := tracer.Start(ctx, "optimization.OptimizeSync")
+		_, err := OptimizeSync(ctx)
+		// span.End()
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": err.Error(),

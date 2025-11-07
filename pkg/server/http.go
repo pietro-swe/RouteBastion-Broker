@@ -75,7 +75,11 @@ func (s *Server) registerCustomValidators() {
 }
 
 func (s *Server) registerRoutes() http.Handler {
-	router := gin.Default()
+	gin.SetMode(gin.ReleaseMode)
+	router := gin.New()
+	router.Use(
+		gin.Recovery(),
+	)
 
 	// Middlewares
 	router.Use(otelgin.Middleware("Broker-REST-API"))
