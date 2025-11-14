@@ -1,4 +1,4 @@
-.PHONY: all give_permissions clean run migrate key
+.PHONY: all give_permissions clean run migrate key build
 
 all: clean build run
 

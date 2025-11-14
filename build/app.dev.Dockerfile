@@ -2,19 +2,12 @@ FROM golang:1.25.1-alpine
 
 WORKDIR /app
 
-RUN go install github.com/air-verse/air@latest
-
 COPY go.mod go.sum ./
 RUN go mod download
 
-ADD cmd /cmd
-ADD scripts /scripts
-ADD internal /internal
-ADD sql /sql
+COPY . .
 
-COPY .air.toml .
-COPY sqlc.yml .
-COPY app.env .
+RUN go install github.com/air-verse/air@latest
 
 EXPOSE 8080
 

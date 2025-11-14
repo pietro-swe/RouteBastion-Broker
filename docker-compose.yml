@@ -25,8 +25,8 @@ services:
       - "KONG_ADMIN_ACCESS_LOG=/dev/stdout"
       - "KONG_PROXY_ERROR_LOG=/dev/stderr"
       - "KONG_ADMIN_ERROR_LOG=/dev/stderr"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+    # extra_hosts:
+    #   - "host.docker.internal:host-gateway"
     volumes:
       - "./docker/kong/config.yaml:/kong/config.yaml"
     ports:
@@ -39,7 +39,7 @@ services:
   api-broker:
     build:
       context: .
-      dockerfile: build/app.dev.Dockerfile
+      dockerfile: build/app.Dockerfile
     depends_on:
       database:
         condition: service_healthy

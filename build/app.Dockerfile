@@ -2,30 +2,18 @@ FROM golang:1.25.1-alpine AS build
 
 WORKDIR /app
 
-RUN go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
-
 COPY go.mod go.sum ./
 RUN go mod download
 
-ADD cmd /cmd
-ADD scripts /scripts
-ADD internal /internal
-ADD sql /sql
+COPY . .
 
-COPY sqlc.yml ./
-COPY app.env ./
+RUN CGO_ENABLED=0 GOOS=linux go build -o broker ./cmd
 
-RUN sqlc generate
-
-RUN make give_permissions
-RUN make all
-
-FROM scratch
+FROM alpine:3.20
 
 WORKDIR /app
-
-COPY --from=build /app/bin/bastion.so ./bin/bastion.so
+COPY --from=build /app/broker .
+COPY --from=build /app/app.env ./app.env
 
 EXPOSE 8080
-
-ENTRYPOINT ["/bin/bastion.so"]
+CMD ["./broker"]
