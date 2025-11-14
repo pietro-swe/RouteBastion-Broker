@@ -4,7 +4,6 @@ Package server provides an unified interface that represents the application Ser
 package server
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -58,7 +57,7 @@ func NewHTTPServer(config env.AppEnvConfig, trace trace.Tracer) *http.Server {
 	newServer.registerCustomValidators()
 
 	server := &http.Server{
-		Addr:         fmt.Sprintf(":%d", newServer.Port),
+		Addr:         "0.0.0.0:8080",
 		Handler:      newServer.registerRoutes(),
 		IdleTimeout:  time.Minute,
 		ReadTimeout:  15 * time.Second,

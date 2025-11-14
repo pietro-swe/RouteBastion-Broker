@@ -40,17 +40,11 @@ services:
     build:
       context: .
       dockerfile: build/app.dev.Dockerfile
-    deploy:
-      replicas: 1
-    ports:
-      - 8080:8080
     depends_on:
       database:
         condition: service_healthy
       cache:
         condition: service_healthy
-    volumes:
-      - ./:/app
 
   database:
     image: bitnami/postgresql:17.2.0
