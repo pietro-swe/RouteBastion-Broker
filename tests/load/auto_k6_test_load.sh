@@ -60,10 +60,11 @@ for INSTANCES in "${INSTANCES_LIST[@]}"; do
       echo "[$(date '+%H:%M:%S')] Running test $i/$RUNS with $USERS users against $INSTANCES instance(s)..."
 
       k6 run test.js \
-        --vus "$USERS" \
-        --duration "$RUN_TIME" \
-        --stage "${RAMP_SEC}s:${USERS}" \
         --env HOST="$HOST" \
+        --env VUS="$USERS" \
+        --env RUN_TIME="$RUN_TIME" \
+        --env SPAWN_RATE="$SPAWN_RATE" \
+        --env RAMP="$RAMP_SEC" \
         --out csv="results/${CSV_NAME}.csv"
 
       echo "[$(date '+%H:%M:%S')] Test $i/$RUNS completed."
