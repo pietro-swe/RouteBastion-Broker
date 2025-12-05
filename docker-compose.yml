@@ -47,7 +47,7 @@ services:
         condition: service_healthy
 
   database:
-    image: bitnami/postgresql:17.2.0
+    image: bitnami/postgresql:latest
     container_name: "postgresql-db"
     restart: always
     ports:
