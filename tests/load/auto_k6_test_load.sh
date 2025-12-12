@@ -4,9 +4,19 @@ set -euo pipefail
 USERS_LIST=(50 75 100 200 300)
 INSTANCES_LIST=(1 2 3)
 SPAWN_RATE=10
-RUN_TIME="5m"
+RUN_TIME="1m"
 RUNS=10
 HOST="http://localhost:8000"
+
+trap cleanup_and_exit INT
+
+cleanup_and_exit() {
+  echo
+  echo "Caught interrupt signal. Cleaning up..."
+  docker compose -f ../../docker-compose.yml down -v
+  echo "Cleanup done. Exiting."
+  exit 0
+}
 
 generate_kong_targets() {
   count=$1
@@ -65,7 +75,7 @@ for INSTANCES in "${INSTANCES_LIST[@]}"; do
         --env RUN_TIME="$RUN_TIME" \
         --env SPAWN_RATE="$SPAWN_RATE" \
         --env RAMP="$RAMP_SEC" \
-        --out csv="results/${CSV_NAME}.csv"
+        --env FILE_NAME="results/${CSV_NAME}.csv"
 
       echo "[$(date '+%H:%M:%S')] Test $i/$RUNS completed."
     done
