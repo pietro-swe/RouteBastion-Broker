@@ -4,7 +4,7 @@ set -euo pipefail
 USERS_LIST=(50 75 100 200 300)
 INSTANCES_LIST=(1 2 3)
 SPAWN_RATE=10
-RUN_TIME="1m"
+RUN_TIME="5m"
 RUNS=10
 HOST="http://localhost:8000"
 
