@@ -1,10 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-USERS_LIST=(50 75 100 200 300)
 INSTANCES_LIST=(1 2 3)
-SPAWN_RATE=10
-RUN_TIME="5m"
 RUNS=10
 HOST="http://localhost:8000"
 
@@ -58,31 +55,24 @@ for INSTANCES in "${INSTANCES_LIST[@]}"; do
   docker compose -f ../../docker-compose.yml down -v
   docker compose -f ../../docker-compose.yml up -d --scale api-broker="$INSTANCES"
 
-  for USERS in "${USERS_LIST[@]}"; do
-    for i in $(seq 1 "$RUNS"); do
+  for i in $(seq 1 "$RUNS"); do
       TIMESTAMP=$(date +%Y-%m-%d-%Hh%M)
-      CSV_NAME="${TIMESTAMP}_run${i}_${USERS}users_${SPAWN_RATE}rate_${RUN_TIME}min_${INSTANCES}instances"
-
-      # rampa = USERS / SPAWN_RATE
-      RAMP_SEC=$(( USERS / SPAWN_RATE ))
+      CSV_NAME="${TIMESTAMP}_run${i}_${RUN_TIME}min_${INSTANCES}instances"
 
       echo
-      echo "[$(date '+%H:%M:%S')] Running test $i/$RUNS with $USERS users against $INSTANCES instance(s)..."
+      echo "[$(date '+%H:%M:%S')] Running test $i/$RUNS against $INSTANCES instance(s)..."
 
       k6 run test.js \
         --env HOST="$HOST" \
-        --env VUS="$USERS" \
-        --env RUN_TIME="$RUN_TIME" \
-        --env SPAWN_RATE="$SPAWN_RATE" \
-        --env RAMP="$RAMP_SEC" \
         --env FILE_NAME="results/${CSV_NAME}.csv"
 
       echo "[$(date '+%H:%M:%S')] Test $i/$RUNS completed."
     done
-  done
 
   echo "[$(date '+%H:%M:%S')] Done with $INSTANCES instance(s)."
 done
 
 echo
 echo "🎉 All load tests completed successfully!"
+
+cleanup_and_exit

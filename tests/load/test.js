@@ -1,35 +1,27 @@
 import papa from "https://jslib.k6.io/papaparse/5.1.1/index.js";
 import http from "k6/http";
-import { sleep } from "k6";
-
-export function setup() {
-  const vus = parseInt(__ENV.VUS || "1");
-  const runTime = __ENV.RUN_TIME || "1m";
-  const spawnRate = parseInt(__ENV.SPAWN_RATE || "1");
-
-  // tempo de ramp-up calculado
-  const rampSeconds = Math.max(1, Math.floor(vus / spawnRate));
-
-  return { vus, runTime, rampSeconds };
-}
 
 export const options = {
   scenarios: {
-    load_test: {
-      executor: "ramping-vus",
-      startVUs: 0,
+    capacity_test: {
+      executor: "ramping-arrival-rate",
+      timeUnit: "1s",
+      startRate: 50,
       stages: [
-        { duration: `${__ENV.RAMP}s`, target: parseInt(__ENV.VUS) },
-        { duration: __ENV.RUN_TIME, target: parseInt(__ENV.VUS) },
+        { target: 500, duration: "5m" },
+        { target: 1000, duration: "5m" },
+        { target: 2000, duration: "5m" },
+        { target: 4000, duration: "5m" },
       ],
+      preAllocatedVUs: 500,
+      maxVUs: 6000,
+      gracefulStop: "30s",
     },
   },
 };
 
 export default function () {
-  const host = __ENV.HOST;
-  http.get(`${host}/v1/optimizations/sync`);
-  sleep(1);
+  http.get(`${__ENV.HOST}/v1/optimizations/sync`);
 }
 
 export function handleSummary(data) {
@@ -45,7 +37,7 @@ export function handleSummary(data) {
 
     rows.push({
       "Request Count": httpReqs?.values?.count ?? 0,
-      "Failure Count": httpFailed?.values?.passes ?? 0,
+      "Failure Count": httpFailed?.values?.fails ?? 0,
       "Median Response Time": stats["p(50)"],
       "Average Response Time": stats.avg,
       "Min Response Time": stats.min,
