@@ -4,6 +4,7 @@ set -euo pipefail
 INSTANCES_LIST=(1 2 3)
 RUNS=10
 HOST="http://localhost:8000"
+FOLDER="results"
 
 trap cleanup_and_exit INT
 
@@ -31,16 +32,38 @@ check_if_node_installed() {
   fi
 }
 
-install_k6_if_missing() {
+install_k6_lib_if_missing() {
   if ! command -v k6 &> /dev/null; then
-    echo "k6 not found, installing..."
+    echo "k6 js lib not found, installing..."
     npm install -g k6
   fi
 }
 
 check_if_node_installed
 
-install_k6_if_missing
+install_k6_lib_if_missing
+
+while getopts "hf:" opt; do
+  case ${opt} in
+    h )
+      echo "Usage: ./auto_k6_test_load.sh [-f folder]"
+      echo
+      echo "This script automates load testing using k6 against a Kong API Gateway setup."
+      echo "It scales the number of API broker instances and runs multiple test iterations."
+      echo "Options:"
+      echo "  -h          Show this help message and exit"
+      echo "  -f folder   Specify the folder to save results (default: results)"
+      exit 0
+      ;;
+    f )
+      FOLDER=$OPTARG
+      ;;
+    \? )
+      echo "Invalid option: -$OPTARG" 1>&2
+      exit 1
+      ;;
+  esac
+done
 
 echo "=== Starting load tests ==="
 
@@ -64,7 +87,7 @@ for INSTANCES in "${INSTANCES_LIST[@]}"; do
 
       k6 run test.js \
         --env HOST="$HOST" \
-        --env FILE_NAME="results/${CSV_NAME}.csv"
+        --env FILE_NAME="${FOLDER}/${CSV_NAME}.csv"
 
       echo "[$(date '+%H:%M:%S')] Test $i/$RUNS completed."
     done
@@ -74,5 +97,7 @@ done
 
 echo
 echo "🎉 All load tests completed successfully!"
+echo
+echo "Performing final cleanup..."
 
 cleanup_and_exit
