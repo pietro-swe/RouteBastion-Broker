@@ -1,11 +1,10 @@
-FROM golang:1.25.1-alpine
+FROM golang:1.25.5-alpine
 
 WORKDIR /app
 
-COPY go.mod go.sum ./
-RUN go mod download
-
-COPY . .
+RUN mkdir -p /home/user/.cache/go-build /go/pkg/mod && \
+    chmod -R 1777 /home/user/.cache && \
+    chmod -R 1777 /go/pkg
 
 RUN go install github.com/air-verse/air@latest
 

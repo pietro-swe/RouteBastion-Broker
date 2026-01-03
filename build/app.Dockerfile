@@ -1,19 +1,25 @@
-FROM golang:1.25.1-alpine AS build
+FROM golang:1.25.5-alpine AS build
 
 WORKDIR /app
 
 COPY go.mod go.sum ./
-RUN go mod download
+RUN go mod download && go mod verify
 
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux go build -o broker ./cmd
+RUN CGO_ENABLED=0 GOOS=linux go build \
+  -ldflags="-s -w" \
+  -trimpath \
+  -o broker ./cmd
 
-FROM alpine:3.20
+FROM scratch
 
-WORKDIR /app
-COPY --from=build /app/broker .
-COPY --from=build /app/app.env ./app.env
+COPY --from=build /etc/passwd /etc/passwd
+COPY --from=build /etc/group /etc/group
+
+COPY --from=build /app/broker /app/broker
+
+USER 1000:1000
 
 EXPOSE 8080
-CMD ["./broker"]
+CMD ["/app/broker"]

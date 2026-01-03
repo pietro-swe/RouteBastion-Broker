@@ -27,8 +27,6 @@ upstreams:
     targets:
       - target: route-bastion-broker-api-broker-1:8080
         weight: 100
-      - target: route-bastion-broker-api-broker-2:8080
-        weight: 100
 
 plugins:
   - name: cors

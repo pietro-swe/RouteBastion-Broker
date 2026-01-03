@@ -157,6 +157,20 @@ FROM providers
 WHERE providers.deleted_at IS NULL
 ORDER BY providers.name ASC;
 
+-- name: UpdateProvider :exec
+UPDATE providers p
+SET
+  name = $2,
+  modified_at = $3
+WHERE p.id = $1;
+
+-- name: DeleteProvider :exec
+UPDATE providers p
+SET
+  modified_at = $2,
+  deleted_at = $3
+WHERE p.id = $1;
+
 -- name: GetActiveOptimizationsByCustomerID :many
 SELECT
   sqlc.embed(optimizations),
