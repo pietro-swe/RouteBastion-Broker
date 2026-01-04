@@ -1,6 +1,6 @@
 module github.com/pietro-swe/RouteBastion-Broker
 
-go 1.25.5
+go 1.25.4
 
 require (
 	cloud.google.com/go/maps v1.26.0

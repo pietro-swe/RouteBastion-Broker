@@ -7,16 +7,66 @@ volumes:
     driver: local
   kong_db_data:
     driver: local
-  go-modules:
-    driver: local
-  go-cache:
-    driver: local
 
 networks:
   metrics:
     driver: bridge
 
 services:
+  # ------------------------
+  # Core Services
+  # ------------------------
+  api-broker:
+    profiles:
+      - prod
+    build:
+      context: .
+      dockerfile: build/app.Dockerfile
+    depends_on:
+      database:
+        condition: service_healthy
+      cache:
+        condition: service_healthy
+    ports:
+      - 8080:8080
+
+  api-broker-dev:
+    image: cosmtrek/air:latest
+    profiles:
+      - dev
+    working_dir: /app
+    depends_on:
+      database:
+        condition: service_healthy
+      cache:
+        condition: service_healthy
+      migrations:
+        condition: service_completed_successfully
+    ports:
+      - 8080:8080
+    volumes:
+      - .:/app
+
+  api-broker-debug:
+    image: cosmtrek/air:latest
+    profiles:
+      - debug
+    build:
+      context: .
+      dockerfile: build/app.debug.Dockerfile
+    depends_on:
+      database:
+        condition: service_healthy
+      cache:
+        condition: service_healthy
+      migrations:
+        condition: service_completed_successfully
+    ports:
+      - 8080:8080
+
+  # ------------------------
+  # Supporting Services
+  # ------------------------
   api-gateway:
     image: kong:3.9
     container_name: "kong-api-gateway"
@@ -41,42 +91,6 @@ services:
       - "8002:8002" # UI (Admin)
       - "8443:8443" # Proxy SSL (HTTPS)
       - "8444:8444" # API (Admin) (HTTPS)
-
-  api-broker:
-    profiles:
-      - prod
-    build:
-      context: .
-      dockerfile: build/app.Dockerfile
-    depends_on:
-      database:
-        condition: service_healthy
-      cache:
-        condition: service_healthy
-    user: "${UID:-1000}:${GID:-1000}"
-    volumes:
-      - .:/app
-      - /tmp
-      - go-modules:/go/pkg/mod
-      - go-cache:/home/user/.cache/go-build
-    environment:
-      - CGO_ENABLED=0
-      - GOCACHE=/home/user/.cache/go-build
-
-  api-broker-dev:
-    image: cosmtrek/air:latest
-    profiles:
-      - dev
-    working_dir: /app
-    depends_on:
-      database:
-        condition: service_healthy
-      cache:
-        condition: service_healthy
-    ports:
-      - 8080:8080
-    volumes:
-      - .:/app
 
   database:
     image: dhi.io/postgres:18.1-alpine3.22-dev
@@ -131,3 +145,26 @@ services:
   #     - "14268:14268" # Traces HTTP
   #     - "4317:4317" # OpenTelemetry/gRPC
   #     - "4318:4318" # OpenTelemetry/HTTP
+
+  # ------------------------
+  # Migration Service
+  # ------------------------
+  migrations:
+    image: migrate/migrate
+    profiles:
+      - dev
+      - debug
+    depends_on:
+      database:
+        condition: service_healthy
+    volumes:
+      - ./sql/migrations:/migrations
+    command:
+      [
+        "-path",
+        "migrations",
+        "-database",
+        "postgresql://docker:docker@database:5432/route_bastion?sslmode=disable&search_path=public",
+        "up",
+      ]
+    restart: on-failure
