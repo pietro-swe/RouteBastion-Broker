@@ -41,8 +41,8 @@ CREATE TABLE "customers" (
   "name" text NOT NULL,
   "business_identifier" text UNIQUE NOT NULL,
   "created_at" timestamp NOT NULL DEFAULT (now()),
-  "modified_at" timestamp DEFAULT null,
-  "deleted_at" timestamp DEFAULT null
+  "modified_at" timestamp DEFAULT NULL,
+  "deleted_at" timestamp DEFAULT NULL
 );
 
 CREATE TABLE "api_keys" (
@@ -50,8 +50,8 @@ CREATE TABLE "api_keys" (
   "key" text UNIQUE NOT NULL,
   "customer_id" uuid NOT NULL,
   "created_at" timestamp NOT NULL DEFAULT (now()),
-  "modified_at" timestamp DEFAULT null,
-  "deleted_at" timestamp DEFAULT null
+  "modified_at" timestamp DEFAULT NULL,
+  "deleted_at" timestamp DEFAULT NULL
 );
 
 CREATE TABLE "constraints" (
@@ -60,8 +60,8 @@ CREATE TABLE "constraints" (
   "kind" constraint_kind NOT NULL,
   "value" jsonb NOT NULL,
   "created_at" timestamp NOT NULL DEFAULT (now()),
-  "modified_at" timestamp DEFAULT null,
-  "deleted_at" timestamp DEFAULT null
+  "modified_at" timestamp DEFAULT NULL,
+  "deleted_at" timestamp DEFAULT NULL
 );
 
 CREATE TABLE "optimization_waypoints" (
@@ -78,10 +78,10 @@ CREATE TABLE "optimizations" (
   "status" optimization_status NOT NULL,
   "kind" request_kind NOT NULL,
   "cost" numeric(10,2) NOT NULL,
-  "started_at" timestamp DEFAULT null,
-  "ended_at" timestamp DEFAULT null,
+  "started_at" timestamp DEFAULT NULL,
+  "ended_at" timestamp DEFAULT NULL,
   "created_at" timestamp NOT NULL DEFAULT (now()),
-  "modified_at" timestamp DEFAULT null
+  "modified_at" timestamp DEFAULT NULL
 );
 
 CREATE TABLE "optimization_vehicles" (
@@ -96,23 +96,23 @@ CREATE TABLE "provider_communication" (
   "accessible_with" communication_method NOT NULL,
   "url" text UNIQUE NOT NULL,
   "created_at" timestamp NOT NULL DEFAULT (now()),
-  "modified_at" timestamp DEFAULT null,
-  "deleted_at" timestamp DEFAULT null
+  "modified_at" timestamp NULL DEFAULT NULL,
+  "deleted_at" timestamp NULL DEFAULT NULL
 );
 
 CREATE TABLE "provider_constraints_and_features" (
   "id" uuid PRIMARY KEY NOT NULL DEFAULT (uuid_generate_v4()),
   "provider_id" uuid NOT NULL,
   "max_waypoints" integer NOT NULL,
-  "supports_async_batch_requests" boolean NOT NULL
+  "supports_async_batch_requests" boolean NOT NULL DEFAULT false
 );
 
 CREATE TABLE "providers" (
   "id" uuid PRIMARY KEY NOT NULL DEFAULT (uuid_generate_v4()),
   "name" text NOT NULL,
   "created_at" timestamp NOT NULL DEFAULT (now()),
-  "modified_at" timestamp DEFAULT null,
-  "deleted_at" timestamp DEFAULT null
+  "modified_at" timestamp NULL DEFAULT NULL,
+  "deleted_at" timestamp NULL DEFAULT NULL
 );
 
 CREATE TABLE "vehicles" (
@@ -122,8 +122,8 @@ CREATE TABLE "vehicles" (
   "cargo_type" cargo_kind NOT NULL,
   "customer_id" uuid NOT NULL,
   "created_at" timestamp NOT NULL DEFAULT (now()),
-  "modified_at" timestamp DEFAULT null,
-  "deleted_at" timestamp DEFAULT null
+  "modified_at" timestamp DEFAULT NULL,
+  "deleted_at" timestamp DEFAULT NULL
 );
 
 CREATE INDEX "idx_api_keys_customer_id" ON "api_keys" ("customer_id");

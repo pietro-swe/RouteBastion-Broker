@@ -18,8 +18,8 @@ type Customer struct {
 
 func NewCustomer(
 	id uuid.UUID,
-	businessIdentifier,
 	name,
+	businessIdentifier,
 	apiKey string,
 	createdAt time.Time,
 	updatedAt,

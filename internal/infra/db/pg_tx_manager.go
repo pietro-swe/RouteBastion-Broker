@@ -4,10 +4,8 @@ import (
 	"context"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/pietro-swe/RouteBastion-Broker/pkg/dbutils"
 )
-
-// txKey is an unexported type for storing the transaction in the context.
-type txKey struct{}
 
 type PgTxManager struct {
 	db *pgxpool.Pool
@@ -36,7 +34,7 @@ func (tm *PgTxManager) WithinTransaction(
 		}
 	}()
 
-	txCtx := context.WithValue(ctx, txKey{}, tx)
+	txCtx := context.WithValue(ctx, dbutils.TxKey{}, tx)
 
 	if err := fn(txCtx); err != nil {
 		_ = tx.Rollback(ctx)

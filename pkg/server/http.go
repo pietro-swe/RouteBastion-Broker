@@ -4,6 +4,7 @@ Package server provides an unified interface that represents the application Ser
 package server
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -16,11 +17,12 @@ import (
 	"github.com/pietro-swe/RouteBastion-Broker/internal/modules/customer"
 	"github.com/pietro-swe/RouteBastion-Broker/internal/modules/health"
 	"github.com/pietro-swe/RouteBastion-Broker/internal/modules/optimization"
+	"github.com/pietro-swe/RouteBastion-Broker/internal/modules/provider"
 	"github.com/pietro-swe/RouteBastion-Broker/pkg/env"
 	"github.com/pietro-swe/RouteBastion-Broker/pkg/httputils"
 
 	// "github.com/pietro-swe/RouteBastion-Broker/pkg/middlewares"
-	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
+
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -56,8 +58,10 @@ func NewHTTPServer(config env.AppEnvConfig, trace trace.Tracer) *http.Server {
 
 	newServer.registerCustomValidators()
 
+	serverAddress := fmt.Sprintf("0.0.0.0:%d", newServer.Port)
+
 	server := &http.Server{
-		Addr:         "0.0.0.0:8080",
+		Addr:         serverAddress,
 		Handler:      newServer.registerRoutes(),
 		IdleTimeout:  time.Minute,
 		ReadTimeout:  15 * time.Second,
@@ -74,38 +78,66 @@ func (s *Server) registerCustomValidators() {
 }
 
 func (s *Server) registerRoutes() http.Handler {
-	gin.SetMode(gin.ReleaseMode)
+	// gin.SetMode(gin.ReleaseMode)
 	router := gin.New()
-	router.Use(
-		gin.Recovery(),
+	// router.Use(
+	// 	gin.Recovery(),
+	// )
+
+	// router.Use(otelgin.Middleware("Broker-REST-API"))
+
+	router.GET(
+		"/health",
+		health.HealthCheckHandler(s.DB),
 	)
-
-	// Middlewares
-	router.Use(otelgin.Middleware("Broker-REST-API"))
-
-	// Health-check
-	router.GET("/health", health.MakeHealthCheckHandler(s.DB))
 
 	v1 := router.Group("/v1")
 	{
-		customers := v1.Group("/customers")
-		{
-			customers.GET(
-				"/:apiKey",
-				customer.MakeGetOneByAPIKeyHandler(s.Trace, s.DB),
-			)
-
-			customers.POST("/", customer.MakeCreateCustomerHandler(
-				s.EncryptionKey,
-				s.Trace,
-				s.DB,
-			))
-		}
-
 		optimizations := v1.Group("/optimizations")
 		// optimizations.Use(middlewares.WithValidAPIKey(s.DB))
 		{
-			optimizations.GET("/sync", optimization.MakeOptimizeSyncHandler(s.Trace))
+			optimizations.GET(
+				"/sync",
+				optimization.OptimizeSyncHandler(s.Trace),
+			)
+		}
+
+		backoffice := v1.Group("/back-office")
+		{
+			customers := backoffice.Group("/customers")
+			{
+				customers.POST(
+					"/",
+					customer.CreateCustomerHandler(
+						s.EncryptionKey,
+						s.Trace,
+						s.DB,
+					),
+				)
+
+				customers.GET(
+					"/:apiKey",
+					customer.GetOneByAPIKeyHandler(s.Trace, s.DB),
+				)
+			}
+
+			providers := backoffice.Group("/providers")
+			{
+				providers.POST(
+					"/",
+					provider.CreateProviderHandler(s.DB),
+				)
+
+				providers.PUT(
+					"/:id",
+					provider.UpdateProviderHandler(s.DB),
+				)
+
+				providers.DELETE(
+					"/:id",
+					provider.DeleteProviderHandler(s.DB),
+				)
+			}
 		}
 	}
 

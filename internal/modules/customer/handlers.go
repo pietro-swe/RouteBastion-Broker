@@ -12,7 +12,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-func MakeCreateCustomerHandler(
+func CreateCustomerHandler(
 	encryptionKey []byte,
 	tracer trace.Tracer,
 	provider db.DBProvider,
@@ -34,27 +34,22 @@ func MakeCreateCustomerHandler(
 		apiKeyGen := crypto.NewHashGenerator(encryptionKey)
 		txManager := db.NewPgTxManager(provider.GetConn())
 
-		traceCtx, span := tracer.Start(ctx, "customer.CreateCustomer")
+		// traceCtx, span := tracer.Start(ctx, "customer.CreateCustomer")
 		customer, err := CreateCustomer(
-			traceCtx,
+			ctx,
 			txManager,
 			store,
 			apiKeyGen,
 			body,
 		)
-		span.End()
-
+		// span.End()
 		if err != nil {
 			switch e := err.(type) {
-			case customerrors.DomainError:
-				c.JSON(http.StatusBadRequest, gin.H{
-					"error": e.Error(),
+			case *customerrors.AppError:
+				c.JSON(customerrors.ToHttpStatus(e), gin.H{
+					"code":    e.Code,
+					"message": e.Msg,
 				})
-			case customerrors.ApplicationError:
-				c.JSON(http.StatusBadRequest, gin.H{
-					"error": e.Error(),
-				})
-			case customerrors.InfrastructureError:
 			default:
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": e.Error(),
@@ -76,7 +71,7 @@ func MakeCreateCustomerHandler(
 	}
 }
 
-func MakeGetOneByAPIKeyHandler(
+func GetOneByAPIKeyHandler(
 	tracer trace.Tracer,
 	provider db.DBProvider,
 ) gin.HandlerFunc {
@@ -96,15 +91,11 @@ func MakeGetOneByAPIKeyHandler(
 
 		if err != nil {
 			switch e := err.(type) {
-			case customerrors.DomainError:
-				c.JSON(http.StatusBadRequest, gin.H{
-					"error": e.Error(),
+			case *customerrors.AppError:
+				c.JSON(customerrors.ToHttpStatus(e), gin.H{
+					"code":    e.Code,
+					"message": e.Msg,
 				})
-			case customerrors.ApplicationError:
-				c.JSON(http.StatusBadRequest, gin.H{
-					"error": e.Error(),
-				})
-			case customerrors.InfrastructureError:
 			default:
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": e.Error(),

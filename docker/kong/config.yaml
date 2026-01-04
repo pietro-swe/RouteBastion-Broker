@@ -16,8 +16,9 @@ services:
           - https
         paths:
           - "/health"
-          - "/v1/customers"
           - "/v1/optimizations"
+          - "/v1/back-office/customers"
+          - "/v1/back-office/providers"
         strip_path: false
 
 upstreams:
@@ -44,4 +45,4 @@ plugins:
       headers:
         - Accept
         - Content-Type
-        - RouteBastion-API-Key
+        - X-RouteBastion-API-Key

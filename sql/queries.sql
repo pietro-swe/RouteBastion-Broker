@@ -1,9 +1,16 @@
+-- Customers
+
 -- name: CreateCustomer :one
 INSERT INTO customers (
   id, name, business_identifier
 ) VALUES (
   $1, $2, $3
 ) RETURNING *;
+
+-- name: DisableCustomer :exec
+UPDATE customers
+  SET deleted_at = $2
+WHERE customers.id = $1;
 
 -- name: GetOneCustomerByBusinessIdentifier :one
 SELECT
@@ -25,10 +32,7 @@ JOIN api_keys AS ak
 WHERE ak.key = $1
 LIMIT 1;
 
--- name: DisableCustomer :exec
-UPDATE customers
-  SET deleted_at = $2
-WHERE customers.id = $1;
+-- API Keys
 
 -- name: CreateApiKey :one
 INSERT INTO api_keys (
@@ -64,6 +68,8 @@ WHERE (ak.customer_id, ak.deleted_at) = ($1, NULL)
 ORDER BY ak.created_at DESC
 LIMIT 1;
 
+-- Vehicles
+
 -- name: CreateVehicle :one
 INSERT INTO vehicles (
   id,
@@ -75,6 +81,11 @@ INSERT INTO vehicles (
 ) VALUES (
   $1, $2, $3, $4, $5, $6
 ) RETURNING *;
+
+-- name: DeleteVehicle :exec
+UPDATE vehicles
+  SET deleted_at = $2
+WHERE vehicles.id = $1;
 
 -- name: GetManyVehiclesByCustomerID :many
 SELECT
@@ -89,10 +100,7 @@ SELECT
 FROM vehicles AS v
 WHERE (v.customer_id, v.deleted_at) = ($1, NULL);
 
--- name: DeleteVehicle :exec
-UPDATE vehicles
-  SET deleted_at = $2
-WHERE vehicles.id = $1;
+-- Constraints
 
 -- name: InsertConstraint :one
 INSERT INTO constraints (
@@ -100,18 +108,6 @@ INSERT INTO constraints (
 ) VALUES (
   $1, $2, $3
 ) RETURNING *;
-
--- name: GetConstraintsByCustomerID :many
-SELECT
-  c.id,
-  c.customer_id,
-  c.kind,
-  c.value,
-  c.created_at,
-  c.modified_at,
-  c.deleted_at
-FROM constraints AS c
-WHERE (c.customer_id, c.deleted_at) = ($1, NULL);
 
 -- name: UpdateConstraintKindAndValue :exec
 UPDATE constraints
@@ -129,12 +125,40 @@ UPDATE constraints
   SET deleted_at = $2
 WHERE constraints.id = $1;
 
--- Name: CreateProvider :one
+-- name: GetConstraintsByCustomerID :many
+SELECT
+  c.id,
+  c.customer_id,
+  c.kind,
+  c.value,
+  c.created_at,
+  c.modified_at,
+  c.deleted_at
+FROM constraints AS c
+WHERE (c.customer_id, c.deleted_at) = ($1, NULL);
+
+-- Providers
+
+-- name: CreateProvider :one
 INSERT INTO providers (
   name
 ) VALUES (
   $1
 ) RETURNING *;
+
+-- name: UpdateProvider :exec
+UPDATE providers p
+SET
+  name = $2,
+  modified_at = $3
+WHERE p.id = $1;
+
+-- name: DeleteProvider :exec
+UPDATE providers p
+SET
+  modified_at = $2,
+  deleted_at = $3
+WHERE p.id = $1;
 
 -- name: GetProviderDetailsByID :one
 SELECT
@@ -157,19 +181,17 @@ FROM providers
 WHERE providers.deleted_at IS NULL
 ORDER BY providers.name ASC;
 
--- name: UpdateProvider :exec
-UPDATE providers p
-SET
-  name = $2,
-  modified_at = $3
-WHERE p.id = $1;
+-- name: GetAllProviders :many
+SELECT
+  sqlc.embed(providers),
+  sqlc.embed(provider_communication),
+  sqlc.embed(provider_constraints_and_features)
+FROM providers
+  JOIN provider_communication ON providers.id = provider_communication.provider_id
+  JOIN provider_constraints_and_features ON providers.id = provider_constraints_and_features.provider_id
+ORDER BY providers.name ASC;
 
--- name: DeleteProvider :exec
-UPDATE providers p
-SET
-  modified_at = $2,
-  deleted_at = $3
-WHERE p.id = $1;
+-- Optimizations
 
 -- name: GetActiveOptimizationsByCustomerID :many
 SELECT

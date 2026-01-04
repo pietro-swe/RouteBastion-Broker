@@ -112,3 +112,12 @@ type GoogleLatLng struct {
 	Latitude  float64 `json:"latitude"`
 	Longitude float64 `json:"longitude"`
 }
+
+type CreateProviderInput struct {
+	Name string `json:"name" binding:"required,min=1"`
+}
+
+type UpdateProviderInput struct {
+	ID   string
+	Name string `json:"name" binding:"required,min=1"`
+}

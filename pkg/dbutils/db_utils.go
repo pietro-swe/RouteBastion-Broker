@@ -9,16 +9,15 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-// txKey is an unexported type for storing the transaction in the context.
-type txKey struct{}
+type TxKey struct{}
 
 type TxManager interface {
 	WithinTransaction(ctx context.Context, fn func(ctx context.Context) error) error
 }
 
 func WithinTransactionReturning[T any](
-	tm TxManager,
 	ctx context.Context,
+	tm TxManager,
 	fn func(ctx context.Context) (T, error),
 ) (T, error) {
 	var result T
@@ -34,7 +33,7 @@ func WithinTransactionReturning[T any](
 
 // ExtractTx is a helper to retrieve the pgx.Tx from the context.
 func ExtractTx(ctx context.Context) (pgx.Tx, error) {
-	tx, ok := ctx.Value(txKey{}).(pgx.Tx)
+	tx, ok := ctx.Value(TxKey{}).(pgx.Tx)
 
 	if !ok {
 		return nil, errors.New("transaction not found in context")
@@ -50,9 +49,29 @@ func ConvertPgtypeTimestampToTime(ts pgtype.Timestamp) (time.Time, error) {
 	return ts.Time, nil
 }
 
+func ConvertPgtypeTimestampToTimePointer(ts pgtype.Timestamp) (*time.Time, error) {
+	if !ts.Valid {
+		return nil, nil
+	}
+	return &ts.Time, nil
+}
+
 func ConvertTimeToPgtypeTimestamp(t time.Time) pgtype.Timestamp {
 	return pgtype.Timestamp{
 		Time:  t,
+		Valid: true,
+	}
+}
+
+func ConvertNullableTimeToPgtypeTimestamp(t *time.Time) pgtype.Timestamp {
+	if t == nil {
+		return pgtype.Timestamp{
+			Valid: false,
+		}
+	}
+
+	return pgtype.Timestamp{
+		Time:  *t,
 		Valid: true,
 	}
 }

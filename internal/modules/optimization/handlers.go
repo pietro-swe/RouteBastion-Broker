@@ -7,7 +7,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-func MakeOptimizeSyncHandler(
+func OptimizeSyncHandler(
 	tracer trace.Tracer,
 ) gin.HandlerFunc {
 	return func(c *gin.Context) {

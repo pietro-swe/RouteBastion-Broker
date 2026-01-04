@@ -23,30 +23,33 @@ func CreateCustomer(
 	customer, err := store.GetOneByBusinessIdentifier(ctx, input.BusinessIdentifier)
 
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		return nil, customerrors.InfrastructureError{
-			Code: customerrors.ErrCodeDatabaseFailure,
-			Msg:  err.Error(),
-		}
+		return nil, customerrors.NewInfrastructureError(
+			customerrors.ErrCodeDatabaseFailure,
+			err.Error(),
+			err,
+		)
 	}
 
 	if customer != nil {
-		return nil, customerrors.ApplicationError{
-			Code: customerrors.ErrCodeConflict,
-			Msg:  "customer already exists",
-		}
+		return nil, customerrors.NewApplicationError(
+			customerrors.ErrCodeConflict,
+			"customer already exists",
+			err,
+		)
 	}
 
 	return dbutils.WithinTransactionReturning(
-		tx,
 		ctx,
+		tx,
 		func(txCtx context.Context) (*Customer, error) {
 			rawKey := uuid.NewV4().String()
 			hashed, err := keyGen.Generate(rawKey)
 			if err != nil {
-				return nil, customerrors.InfrastructureError{
-					Code: customerrors.ErrCodeEncryptionFailure,
-					Msg:  err.Error(),
-				}
+				return nil, customerrors.NewInfrastructureError(
+					customerrors.ErrCodeEncryptionFailure,
+					err.Error(),
+					err,
+				)
 			}
 
 			now := time.Now()
@@ -73,10 +76,11 @@ func CreateCustomer(
 
 			err = store.Create(txCtx, customerInput)
 			if err != nil {
-				return nil, customerrors.InfrastructureError{
-					Code: customerrors.ErrCodeDatabaseFailure,
-					Msg:  err.Error(),
-				}
+				return nil, customerrors.NewInfrastructureError(
+					customerrors.ErrCodeDatabaseFailure,
+					err.Error(),
+					err,
+				)
 			}
 
 			err = store.SaveAPIKey(txCtx, &shared.SaveAPIKeyInput{
@@ -88,10 +92,11 @@ func CreateCustomer(
 				DeletedAt:  nil,
 			})
 			if err != nil {
-				return nil, customerrors.InfrastructureError{
-					Code: customerrors.ErrCodeDatabaseFailure,
-					Msg:  err.Error(),
-				}
+				return nil, customerrors.NewInfrastructureError(
+					customerrors.ErrCodeDatabaseFailure,
+					err.Error(),
+					err,
+				)
 			}
 
 			return customer, nil
@@ -107,10 +112,11 @@ func GetOneCustomerByAPIKey(
 	customer, err := store.GetOneByAPIKey(ctx, apiKey)
 
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		return nil, customerrors.InfrastructureError{
-			Code: customerrors.ErrCodeDatabaseFailure,
-			Msg:  err.Error(),
-		}
+		return nil, customerrors.NewInfrastructureError(
+			customerrors.ErrCodeDatabaseFailure,
+			err.Error(),
+			err,
+		)
 	}
 
 	if customer == nil {
