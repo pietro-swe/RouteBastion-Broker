@@ -20,7 +20,8 @@ func CreateProviderHandler(
 		err := c.BindJSON(&body)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
-				"error": err.Error(),
+				"code":    customerrors.ErrCodeInvalidInput,
+				"message": err.Error(),
 			})
 
 			return
@@ -71,8 +72,8 @@ func UpdateProviderHandler(
 		parsedID, err := uuid.FromString(id)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
-				"code":  customerrors.ErrCodeInvalidInput,
-				"error": "invalid provider ID",
+				"code":    customerrors.ErrCodeInvalidInput,
+				"message": "invalid provider ID",
 			})
 
 			return

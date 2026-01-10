@@ -11,6 +11,10 @@ type CreateCustomerInput struct {
 	BusinessIdentifier string `json:"businessIdentifier" binding:"required"`
 }
 
+type DeleteCustomerInput struct {
+	CustomerID uuid.UUID
+}
+
 type SaveCustomerInput struct {
 	ID                 uuid.UUID
 	Name               string

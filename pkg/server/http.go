@@ -119,6 +119,11 @@ func (s *Server) registerRoutes() http.Handler {
 					"/:apiKey",
 					customer.GetOneByAPIKeyHandler(s.Trace, s.DB),
 				)
+
+				customers.PUT(
+					"/:customerId/disable",
+					customer.DisableCustomerHandler(s.Trace, s.DB),
+				)
 			}
 
 			providers := backoffice.Group("/providers")

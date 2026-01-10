@@ -31,6 +31,14 @@ func WithinTransactionReturning[T any](
 	return result, err
 }
 
+func WithinTransactionReturningErr(
+	ctx context.Context,
+	tm TxManager,
+	fn func(ctx context.Context) error,
+) error {
+	return tm.WithinTransaction(ctx, fn)
+}
+
 // ExtractTx is a helper to retrieve the pgx.Tx from the context.
 func ExtractTx(ctx context.Context) (pgx.Tx, error) {
 	tx, ok := ctx.Value(TxKey{}).(pgx.Tx)
@@ -74,4 +82,8 @@ func ConvertNullableTimeToPgtypeTimestamp(t *time.Time) pgtype.Timestamp {
 		Time:  *t,
 		Valid: true,
 	}
+}
+
+func IsNoRowsError(err error) bool {
+	return errors.Is(err, pgx.ErrNoRows)
 }

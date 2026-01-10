@@ -148,6 +148,25 @@ func (q *Queries) CreateVehicle(ctx context.Context, arg CreateVehicleParams) (M
 	return i, err
 }
 
+const deleteAllApiKeysByCustomerID = `-- name: DeleteAllApiKeysByCustomerID :exec
+UPDATE api_keys
+SET
+  modified_at = $2,
+  deleted_at = $3
+WHERE customer_id = $1
+`
+
+type DeleteAllApiKeysByCustomerIDParams struct {
+	CustomerID go_uuid.UUID
+	ModifiedAt pgtype.Timestamp
+	DeletedAt  pgtype.Timestamp
+}
+
+func (q *Queries) DeleteAllApiKeysByCustomerID(ctx context.Context, arg DeleteAllApiKeysByCustomerIDParams) error {
+	_, err := q.db.Exec(ctx, deleteAllApiKeysByCustomerID, arg.CustomerID, arg.ModifiedAt, arg.DeletedAt)
+	return err
+}
+
 const deleteApiKey = `-- name: DeleteApiKey :exec
 UPDATE api_keys
 SET
@@ -505,6 +524,78 @@ func (q *Queries) GetCustomerByApiKey(ctx context.Context, key string) (GetCusto
 	return i, err
 }
 
+const getCustomerByBusinessIdentifier = `-- name: GetCustomerByBusinessIdentifier :one
+SELECT
+  c.id, c.name, c.business_identifier, c.created_at, c.modified_at, c.deleted_at,
+  ak.id, ak.key, ak.customer_id, ak.created_at, ak.modified_at, ak.deleted_at
+FROM customers AS c
+JOIN api_keys AS ak
+  ON c.id = ak.customer_id
+WHERE c.business_identifier = $1
+LIMIT 1
+`
+
+type GetCustomerByBusinessIdentifierRow struct {
+	ModelCustomer ModelCustomer
+	ModelApiKey   ModelApiKey
+}
+
+func (q *Queries) GetCustomerByBusinessIdentifier(ctx context.Context, businessIdentifier string) (GetCustomerByBusinessIdentifierRow, error) {
+	row := q.db.QueryRow(ctx, getCustomerByBusinessIdentifier, businessIdentifier)
+	var i GetCustomerByBusinessIdentifierRow
+	err := row.Scan(
+		&i.ModelCustomer.ID,
+		&i.ModelCustomer.Name,
+		&i.ModelCustomer.BusinessIdentifier,
+		&i.ModelCustomer.CreatedAt,
+		&i.ModelCustomer.ModifiedAt,
+		&i.ModelCustomer.DeletedAt,
+		&i.ModelApiKey.ID,
+		&i.ModelApiKey.Key,
+		&i.ModelApiKey.CustomerID,
+		&i.ModelApiKey.CreatedAt,
+		&i.ModelApiKey.ModifiedAt,
+		&i.ModelApiKey.DeletedAt,
+	)
+	return i, err
+}
+
+const getCustomerByID = `-- name: GetCustomerByID :one
+SELECT
+  c.id, c.name, c.business_identifier, c.created_at, c.modified_at, c.deleted_at,
+  ak.id, ak.key, ak.customer_id, ak.created_at, ak.modified_at, ak.deleted_at
+FROM customers AS c
+JOIN api_keys AS ak
+  ON c.id = ak.customer_id
+WHERE c.id = $1
+LIMIT 1
+`
+
+type GetCustomerByIDRow struct {
+	ModelCustomer ModelCustomer
+	ModelApiKey   ModelApiKey
+}
+
+func (q *Queries) GetCustomerByID(ctx context.Context, id go_uuid.UUID) (GetCustomerByIDRow, error) {
+	row := q.db.QueryRow(ctx, getCustomerByID, id)
+	var i GetCustomerByIDRow
+	err := row.Scan(
+		&i.ModelCustomer.ID,
+		&i.ModelCustomer.Name,
+		&i.ModelCustomer.BusinessIdentifier,
+		&i.ModelCustomer.CreatedAt,
+		&i.ModelCustomer.ModifiedAt,
+		&i.ModelCustomer.DeletedAt,
+		&i.ModelApiKey.ID,
+		&i.ModelApiKey.Key,
+		&i.ModelApiKey.CustomerID,
+		&i.ModelApiKey.CreatedAt,
+		&i.ModelApiKey.ModifiedAt,
+		&i.ModelApiKey.DeletedAt,
+	)
+	return i, err
+}
+
 const getManyVehiclesByCustomerID = `-- name: GetManyVehiclesByCustomerID :many
 SELECT
   v.id,
@@ -546,42 +637,6 @@ func (q *Queries) GetManyVehiclesByCustomerID(ctx context.Context, customerID go
 		return nil, err
 	}
 	return items, nil
-}
-
-const getOneCustomerByBusinessIdentifier = `-- name: GetOneCustomerByBusinessIdentifier :one
-SELECT
-  c.id, c.name, c.business_identifier, c.created_at, c.modified_at, c.deleted_at,
-  ak.id, ak.key, ak.customer_id, ak.created_at, ak.modified_at, ak.deleted_at
-FROM customers AS c
-JOIN api_keys AS ak
-  ON c.id = ak.customer_id
-WHERE c.business_identifier = $1
-LIMIT 1
-`
-
-type GetOneCustomerByBusinessIdentifierRow struct {
-	ModelCustomer ModelCustomer
-	ModelApiKey   ModelApiKey
-}
-
-func (q *Queries) GetOneCustomerByBusinessIdentifier(ctx context.Context, businessIdentifier string) (GetOneCustomerByBusinessIdentifierRow, error) {
-	row := q.db.QueryRow(ctx, getOneCustomerByBusinessIdentifier, businessIdentifier)
-	var i GetOneCustomerByBusinessIdentifierRow
-	err := row.Scan(
-		&i.ModelCustomer.ID,
-		&i.ModelCustomer.Name,
-		&i.ModelCustomer.BusinessIdentifier,
-		&i.ModelCustomer.CreatedAt,
-		&i.ModelCustomer.ModifiedAt,
-		&i.ModelCustomer.DeletedAt,
-		&i.ModelApiKey.ID,
-		&i.ModelApiKey.Key,
-		&i.ModelApiKey.CustomerID,
-		&i.ModelApiKey.CreatedAt,
-		&i.ModelApiKey.ModifiedAt,
-		&i.ModelApiKey.DeletedAt,
-	)
-	return i, err
 }
 
 const getOptimizationHistoryByCustomerID = `-- name: GetOptimizationHistoryByCustomerID :many

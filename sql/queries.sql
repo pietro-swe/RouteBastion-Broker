@@ -12,7 +12,7 @@ UPDATE customers
   SET deleted_at = $2
 WHERE customers.id = $1;
 
--- name: GetOneCustomerByBusinessIdentifier :one
+-- name: GetCustomerByBusinessIdentifier :one
 SELECT
   sqlc.embed(c),
   sqlc.embed(ak)
@@ -32,6 +32,16 @@ JOIN api_keys AS ak
 WHERE ak.key = $1
 LIMIT 1;
 
+-- name: GetCustomerByID :one
+SELECT
+  sqlc.embed(c),
+  sqlc.embed(ak)
+FROM customers AS c
+JOIN api_keys AS ak
+  ON c.id = ak.customer_id
+WHERE c.id = $1
+LIMIT 1;
+
 -- API Keys
 
 -- name: CreateApiKey :one
@@ -47,6 +57,13 @@ SET
 	modified_at = $2,
 	deleted_at = $3
 WHERE id = $1;
+
+-- name: DeleteAllApiKeysByCustomerID :exec
+UPDATE api_keys
+SET
+  modified_at = $2,
+  deleted_at = $3
+WHERE customer_id = $1;
 
 -- name: UpdateApiKey :exec
 UPDATE api_keys

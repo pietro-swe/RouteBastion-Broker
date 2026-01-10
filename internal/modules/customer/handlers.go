@@ -9,6 +9,7 @@ import (
 	"github.com/pietro-swe/RouteBastion-Broker/internal/shared"
 	"github.com/pietro-swe/RouteBastion-Broker/pkg/crypto"
 	"github.com/pietro-swe/RouteBastion-Broker/pkg/customerrors"
+	uuid "github.com/satori/go.uuid"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -80,15 +81,14 @@ func GetOneByAPIKeyHandler(
 
 		apiKey := c.Param("apiKey")
 
-		traceCtx, span := tracer.Start(ctx, "customer.GetOneCustomerByAPIKey")
+		// traceCtx, span := tracer.Start(ctx, "customer.GetOneCustomerByAPIKey")
 		store := NewCustomersStore(provider)
 		foundCustomer, err := GetOneCustomerByAPIKey(
-			traceCtx,
+			ctx,
 			store,
 			apiKey,
 		)
-		span.End()
-
+		// span.End()
 		if err != nil {
 			switch e := err.(type) {
 			case *customerrors.AppError:
@@ -124,5 +124,59 @@ func GetOneByAPIKeyHandler(
 			"updatedAt":          foundCustomer.UpdatedAt,
 			"deletedAt":          foundCustomer.DeletedAt,
 		})
+	}
+}
+
+func DisableCustomerHandler(
+	tracer trace.Tracer,
+	provider db.DBProvider,
+) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		customerID := c.Param("id")
+
+		parsedCustomerID, err := uuid.FromString(customerID)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"code":    customerrors.ErrCodeInvalidInput,
+				"message": "invalid customer ID format",
+			})
+
+			return
+		}
+
+		store := NewCustomersStore(provider)
+		txManager := db.NewPgTxManager(provider.GetConn())
+
+		// traceCtx, span := tracer.Start(ctx, "customer.DisableCustomer")
+		disableErr := DisableCustomer(
+			ctx,
+			txManager,
+			store,
+			shared.DeleteCustomerInput{
+				CustomerID: parsedCustomerID,
+			},
+		)
+		// span.End()
+
+		if disableErr != nil {
+			switch e := disableErr.(type) {
+			case *customerrors.AppError:
+				c.JSON(customerrors.ToHttpStatus(e), gin.H{
+					"code":    e.Code,
+					"message": e.Msg,
+				})
+			default:
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"code":    customerrors.ErrUnknown,
+					"message": e.Error(),
+				})
+			}
+
+			return
+		}
+
+		c.Status(http.StatusNoContent)
 	}
 }

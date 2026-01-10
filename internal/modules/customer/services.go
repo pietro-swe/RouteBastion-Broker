@@ -20,7 +20,7 @@ func CreateCustomer(
 	keyGen crypto.HashGenerator,
 	input shared.CreateCustomerInput,
 ) (*Customer, error) {
-	customer, err := store.GetOneByBusinessIdentifier(ctx, input.BusinessIdentifier)
+	customer, err := store.GetByBusinessIdentifier(ctx, input.BusinessIdentifier)
 
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return nil, customerrors.NewInfrastructureError(
@@ -109,7 +109,7 @@ func GetOneCustomerByAPIKey(
 	store CustomersStore,
 	apiKey string,
 ) (*Customer, error) {
-	customer, err := store.GetOneByAPIKey(ctx, apiKey)
+	customer, err := store.GetByAPIKey(ctx, apiKey)
 
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return nil, customerrors.NewInfrastructureError(
@@ -124,4 +124,56 @@ func GetOneCustomerByAPIKey(
 	}
 
 	return customer, nil
+}
+
+func DisableCustomer(
+	ctx context.Context,
+	tx dbutils.TxManager,
+	store CustomersStore,
+	input shared.DeleteCustomerInput,
+) error {
+	_, err := store.GetByID(ctx, input.CustomerID)
+	if err != nil && !dbutils.IsNoRowsError(err) {
+		return customerrors.NewInfrastructureError(
+			customerrors.ErrCodeDatabaseFailure,
+			err.Error(),
+			err,
+		)
+	}
+
+	if dbutils.IsNoRowsError(err) {
+		return customerrors.NewApplicationError(
+			customerrors.ErrCodeNotFound,
+			"customer not found",
+			nil,
+		)
+	}
+
+	deletionErr := dbutils.WithinTransactionReturningErr(
+		ctx,
+		tx,
+		func(txCtx context.Context) error {
+			err := store.Delete(txCtx, input.CustomerID)
+			if err != nil {
+				return customerrors.NewInfrastructureError(
+					customerrors.ErrCodeDatabaseFailure,
+					err.Error(),
+					err,
+				)
+			}
+
+			err = store.DeleteAllAPIKeysByCustomerID(txCtx, input.CustomerID)
+			if err != nil {
+				return customerrors.NewInfrastructureError(
+					customerrors.ErrCodeDatabaseFailure,
+					err.Error(),
+					err,
+				)
+			}
+
+			return nil
+		},
+	)
+
+	return deletionErr
 }

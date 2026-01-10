@@ -2,18 +2,23 @@ package customer
 
 import (
 	"context"
+	"time"
 
 	"github.com/pietro-swe/RouteBastion-Broker/internal/infra/db"
 	"github.com/pietro-swe/RouteBastion-Broker/internal/infra/db/generated"
 	"github.com/pietro-swe/RouteBastion-Broker/internal/shared"
 	"github.com/pietro-swe/RouteBastion-Broker/pkg/dbutils"
+	uuid "github.com/satori/go.uuid"
 )
 
 type CustomersStore interface {
 	Create(ctx context.Context, input *shared.SaveCustomerInput) error
+	Delete(ctx context.Context, customerID uuid.UUID) error
+	GetByBusinessIdentifier(ctx context.Context, businessIdentifier string) (*Customer, error)
+	GetByID(ctx context.Context, customerID uuid.UUID) (*Customer, error)
 	SaveAPIKey(ctx context.Context, input *shared.SaveAPIKeyInput) error
-	GetOneByAPIKey(ctx context.Context, apiKey string) (*Customer, error)
-	GetOneByBusinessIdentifier(ctx context.Context, businessIdentifier string) (*Customer, error)
+	GetByAPIKey(ctx context.Context, apiKey string) (*Customer, error)
+	DeleteAllAPIKeysByCustomerID(ctx context.Context, customerID uuid.UUID) error
 }
 
 type CustomersStoreImpl struct {
@@ -45,8 +50,28 @@ func (s *CustomersStoreImpl) Create(ctx context.Context, input *shared.SaveCusto
 	return err
 }
 
-func (s *CustomersStoreImpl) GetOneByAPIKey(ctx context.Context, apiKey string) (*Customer, error) {
-	row, err := s.queries.GetCustomerByApiKey(ctx, apiKey)
+func (s *CustomersStoreImpl) Delete(ctx context.Context, customerID uuid.UUID) error {
+	tx, err := dbutils.ExtractTx(ctx)
+	if err != nil {
+		return err
+	}
+
+	q := s.queries.WithTx(tx)
+
+	return q.DisableCustomer(ctx, generated.DisableCustomerParams{
+		ID:        customerID,
+		DeletedAt: dbutils.ConvertTimeToPgtypeTimestamp(time.Now()),
+	})
+}
+
+func (s *CustomersStoreImpl) GetByBusinessIdentifier(
+	ctx context.Context,
+	businessIdentifier string,
+) (*Customer, error) {
+	row, err := s.queries.GetCustomerByBusinessIdentifier(
+		ctx,
+		businessIdentifier,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -62,14 +87,8 @@ func (s *CustomersStoreImpl) GetOneByAPIKey(ctx context.Context, apiKey string) 
 	), nil
 }
 
-func (s *CustomersStoreImpl) GetOneByBusinessIdentifier(
-	ctx context.Context,
-	businessIdentifier string,
-) (*Customer, error) {
-	row, err := s.queries.GetOneCustomerByBusinessIdentifier(
-		ctx,
-		businessIdentifier,
-	)
+func (s *CustomersStoreImpl) GetByID(ctx context.Context, customerID uuid.UUID) (*Customer, error) {
+	row, err := s.queries.GetCustomerByID(ctx, customerID)
 	if err != nil {
 		return nil, err
 	}
@@ -128,4 +147,39 @@ func (s *CustomersStoreImpl) SaveAPIKey(ctx context.Context, input *shared.SaveA
 	})
 
 	return err
+}
+
+func (s *CustomersStoreImpl) DeleteAllAPIKeysByCustomerID(ctx context.Context, customerID uuid.UUID) error {
+	tx, err := dbutils.ExtractTx(ctx)
+	if err != nil {
+		return err
+	}
+
+	q := s.queries.WithTx(tx)
+
+	modifiedAt := dbutils.ConvertTimeToPgtypeTimestamp(time.Now())
+	deletedAt := dbutils.ConvertTimeToPgtypeTimestamp(time.Now())
+
+	return q.DeleteAllApiKeysByCustomerID(ctx, generated.DeleteAllApiKeysByCustomerIDParams{
+		CustomerID: customerID,
+		ModifiedAt: modifiedAt,
+		DeletedAt:  deletedAt,
+	})
+}
+
+func (s *CustomersStoreImpl) GetByAPIKey(ctx context.Context, apiKey string) (*Customer, error) {
+	row, err := s.queries.GetCustomerByApiKey(ctx, apiKey)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewCustomer(
+		row.ModelCustomer.ID,
+		row.ModelCustomer.BusinessIdentifier,
+		row.ModelCustomer.Name,
+		row.ModelApiKey.Key,
+		row.ModelCustomer.CreatedAt.Time,
+		nil,
+		nil,
+	), nil
 }
