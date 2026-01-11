@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-INSTANCES_LIST=(1 2 3)
-RUNS=10
+INSTANCES_LIST=(2)
+RUNS=1
 HOST="http://localhost:8000"
 FOLDER="results"
 
@@ -11,7 +11,7 @@ trap cleanup_and_exit INT
 cleanup_and_exit() {
   echo
   echo "Caught interrupt signal. Cleaning up..."
-  docker compose -f ../../docker-compose.yml down -v
+  docker compose -f ../../docker-compose.yml --profile prod down -v
   echo "Cleanup done. Exiting."
   exit 0
 }
@@ -20,7 +20,7 @@ generate_kong_targets() {
   count=$1
   out=""
   for i in $(seq 1 "$count"); do
-    out+="      - target: route-bastion-broker-api-broker-${i}:8080\n        weight: 100\n"
+    out+="      - target: route-bastion-broker-api-${i}:8080\n        weight: 100\n"
   done
   echo -e "$out"
 }
@@ -75,17 +75,17 @@ for INSTANCES in "${INSTANCES_LIST[@]}"; do
   envsubst < kong/config.tpl.yaml > ../../docker/kong/config.yaml
 
   echo "Restarting Docker environment..."
-  docker compose -f ../../docker-compose.yml down -v
-  docker compose -f ../../docker-compose.yml up -d --scale api-broker="$INSTANCES"
+  docker compose -f ../../docker-compose.yml --profile prod down -v
+  docker compose -f ../../docker-compose.yml --profile prod up -d --scale api="$INSTANCES"
 
   for i in $(seq 1 "$RUNS"); do
       TIMESTAMP=$(date +%Y-%m-%d-%Hh%M)
-      CSV_NAME="${TIMESTAMP}_run${i}_${RUN_TIME}min_${INSTANCES}instances"
+      CSV_NAME="${TIMESTAMP}_run${i}_${INSTANCES}instances"
 
       echo
       echo "[$(date '+%H:%M:%S')] Running test $i/$RUNS against $INSTANCES instance(s)..."
 
-      k6 run test.js \
+      k6 run test_vus.js \
         --env HOST="$HOST" \
         --env FILE_NAME="${FOLDER}/${CSV_NAME}.csv"
 

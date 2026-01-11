@@ -26,7 +26,8 @@ upstreams:
     slots: 10
     algorithm: round-robin
     targets:
-${KONG_TARGETS}
+      - target: route-bastion-broker-api-broker-dev-1:8080
+        weight: 100
 
 plugins:
   - name: cors

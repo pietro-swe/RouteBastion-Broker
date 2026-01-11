@@ -1,5 +1,4 @@
-# Compile stage
-FROM golang:1.25.5-alpine AS build-env
+FROM golang:1.25.4-alpine AS build-env
 
 RUN go install github.com/go-delve/delve/cmd/dlv@latest
 

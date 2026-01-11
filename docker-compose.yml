@@ -16,7 +16,7 @@ services:
   # ------------------------
   # Core Services
   # ------------------------
-  api-broker:
+  api:
     profiles:
       - prod
     build:
@@ -28,9 +28,8 @@ services:
       cache:
         condition: service_healthy
     ports:
-      - 8080:8080
-
-  api-broker-dev:
+      - 8080-8082:8080
+  api-dev:
     image: cosmtrek/air:latest
     profiles:
       - dev
@@ -42,13 +41,14 @@ services:
         condition: service_healthy
       migrations:
         condition: service_completed_successfully
+      seeds:
+        condition: service_completed_successfully
     ports:
       - 8080:8080
     volumes:
       - .:/app
 
-  api-broker-debug:
-    image: cosmtrek/air:latest
+  api-debug:
     profiles:
       - debug
     build:
@@ -61,6 +61,8 @@ services:
         condition: service_healthy
       migrations:
         condition: service_completed_successfully
+      seeds:
+        condition: service_completed_successfully
     ports:
       - 8080:8080
 
@@ -71,9 +73,10 @@ services:
     image: kong:3.9
     container_name: "kong-api-gateway"
     profiles:
-      - dev
-      - debug
       - prod
+    depends_on:
+      database:
+        condition: service_healthy
     environment:
       - "KONG_DATABASE=off"
       - "KONG_ADMIN_LISTEN=0.0.0.0:8001"
@@ -85,6 +88,33 @@ services:
       - "KONG_ADMIN_ERROR_LOG=/dev/stderr"
     volumes:
       - "./docker/kong/config.yaml:/kong/config.yaml"
+    ports:
+      - "8000:8000" # Proxy
+      - "8001:8001" # API (Admin)
+      - "8002:8002" # UI (Admin)
+      - "8443:8443" # Proxy SSL (HTTPS)
+      - "8444:8444" # API (Admin) (HTTPS)
+
+  api-gateway-dev:
+    image: kong:3.9
+    container_name: "kong-api-gateway-dev"
+    profiles:
+      - dev
+      - debug
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      - "KONG_DATABASE=off"
+      - "KONG_ADMIN_LISTEN=0.0.0.0:8001"
+      - "KONG_ADMIN_GUI_URL=http://localhost:8002"
+      - "KONG_DECLARATIVE_CONFIG=/kong/config.yaml"
+      - "KONG_PROXY_ACCESS_LOG=/dev/stdout"
+      - "KONG_ADMIN_ACCESS_LOG=/dev/stdout"
+      - "KONG_PROXY_ERROR_LOG=/dev/stderr"
+      - "KONG_ADMIN_ERROR_LOG=/dev/stderr"
+    volumes:
+      - "./docker/kong/dev/config.yaml:/kong/config.yaml"
     ports:
       - "8000:8000" # Proxy
       - "8001:8001" # API (Admin)
@@ -168,3 +198,29 @@ services:
         "up",
       ]
     restart: on-failure
+
+  # ------------------------
+  # Seed Service (Dev only)
+  # ------------------------
+  seeds:
+    image: postgres:18.1-alpine
+    container_name: "seeder"
+    profiles:
+      - dev
+      - debug
+    depends_on:
+      migrations:
+        condition: service_completed_successfully
+    volumes:
+      - ./sql/seeds:/seeds:ro
+    environment:
+      - PGPASSWORD=docker
+    command: [
+        "sh",
+        "-c",
+        "
+        psql postgresql://docker:docker@database:5432/route_bastion?sslmode=disable \
+        -f /seeds/001_dev_data.sql
+        ",
+      ]
+    restart: "no"

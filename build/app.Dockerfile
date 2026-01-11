@@ -1,4 +1,4 @@
-FROM golang:1.25.5-alpine AS build
+FROM golang:1.25.4-alpine AS build
 
 WORKDIR /app
 
@@ -17,7 +17,10 @@ FROM scratch
 COPY --from=build /etc/passwd /etc/passwd
 COPY --from=build /etc/group /etc/group
 
+COPY --from=build /app/app.env /app/app.env
 COPY --from=build /app/broker /app/broker
+
+WORKDIR /app
 
 USER 1000:1000
 
