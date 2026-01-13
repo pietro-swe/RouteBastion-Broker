@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-INSTANCES_LIST=(2)
-RUNS=1
+INSTANCES_LIST=(1 2 3)
+RUNS=10
 HOST="http://localhost:8000"
 FOLDER="results"
 
