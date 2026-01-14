@@ -9,6 +9,7 @@ import (
 type ErrorCode string
 
 const (
+	ErrCodeInvalidData       ErrorCode = "INVALID_DATA"
 	ErrCodeInvalidInput      ErrorCode = "INVALID_INPUT"
 	ErrCodeNotFound          ErrorCode = "NOT_FOUND"
 	ErrCodeConflict          ErrorCode = "CONFLICT"
@@ -81,6 +82,8 @@ func ToHttpStatus(err error) int {
 			return http.StatusNotFound
 		case ErrCodeConflict:
 			return http.StatusConflict
+		case ErrCodeEncryptionFailure, ErrCodeDatabaseFailure, ErrCodeInvalidData:
+			return http.StatusInternalServerError
 		default:
 			return http.StatusInternalServerError
 		}

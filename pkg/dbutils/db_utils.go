@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -86,4 +87,18 @@ func ConvertNullableTimeToPgtypeTimestamp(t *time.Time) pgtype.Timestamp {
 
 func IsNoRowsError(err error) bool {
 	return errors.Is(err, pgx.ErrNoRows)
+}
+
+func UUIDToPgtypeUUID(id uuid.UUID) pgtype.UUID {
+	return pgtype.UUID{
+		Bytes: id,
+		Valid: true,
+	}
+}
+
+func PgtypeUUIDToUUID(pgUUID pgtype.UUID) (uuid.UUID, error) {
+	if !pgUUID.Valid {
+		return uuid.Nil, errors.New("UUID is not valid")
+	}
+	return pgUUID.Bytes, nil
 }

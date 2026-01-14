@@ -2,15 +2,13 @@ package customer
 
 import (
 	"context"
-	"errors"
 	"time"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/google/uuid"
 	"github.com/pietro-swe/RouteBastion-Broker/internal/shared"
 	"github.com/pietro-swe/RouteBastion-Broker/pkg/crypto"
 	"github.com/pietro-swe/RouteBastion-Broker/pkg/customerrors"
 	"github.com/pietro-swe/RouteBastion-Broker/pkg/dbutils"
-	uuid "github.com/satori/go.uuid"
 )
 
 func CreateCustomer(
@@ -18,32 +16,27 @@ func CreateCustomer(
 	tx dbutils.TxManager,
 	store CustomersStore,
 	keyGen crypto.HashGenerator,
-	input shared.CreateCustomerInput,
+	input shared.SaveCustomerInput,
 ) (*Customer, error) {
-	customer, err := store.GetByBusinessIdentifier(ctx, input.BusinessIdentifier)
-
-	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		return nil, customerrors.NewInfrastructureError(
-			customerrors.ErrCodeDatabaseFailure,
-			err.Error(),
-			err,
-		)
-	}
-
-	if customer != nil {
-		return nil, customerrors.NewApplicationError(
-			customerrors.ErrCodeConflict,
-			"customer already exists",
-			err,
-		)
+	_, err := store.GetByBusinessIdentifier(ctx, input.BusinessIdentifier)
+	if err != nil {
+		return nil, err
 	}
 
 	return dbutils.WithinTransactionReturning(
 		ctx,
 		tx,
 		func(txCtx context.Context) (*Customer, error) {
-			rawKey := uuid.NewV4().String()
-			hashed, err := keyGen.Generate(rawKey)
+			rawKey, err := uuid.NewV7()
+			if err != nil {
+				return nil, customerrors.NewInfrastructureError(
+					customerrors.ErrCodeEncryptionFailure,
+					err.Error(),
+					err,
+				)
+			}
+
+			hashed, err := keyGen.Generate(rawKey.String())
 			if err != nil {
 				return nil, customerrors.NewInfrastructureError(
 					customerrors.ErrCodeEncryptionFailure,
@@ -55,26 +48,14 @@ func CreateCustomer(
 			now := time.Now()
 
 			customer := NewCustomer(
-				uuid.NewV4(),
 				input.Name,
 				input.BusinessIdentifier,
-				hashed,
 				now,
 				nil,
 				nil,
 			)
 
-			customerInput := &shared.SaveCustomerInput{
-				ID:                 uuid.NewV4(),
-				Name:               input.Name,
-				BusinessIdentifier: input.BusinessIdentifier,
-				APIKey:             hashed,
-				CreatedAt:          &now,
-				ModifiedAt:         nil,
-				DeletedAt:          nil,
-			}
-
-			err = store.Create(txCtx, customerInput)
+			err = store.Create(txCtx, customer)
 			if err != nil {
 				return nil, customerrors.NewInfrastructureError(
 					customerrors.ErrCodeDatabaseFailure,
@@ -83,14 +64,15 @@ func CreateCustomer(
 				)
 			}
 
-			err = store.SaveAPIKey(txCtx, &shared.SaveAPIKeyInput{
-				ID:         uuid.NewV4(),
-				APIKey:     hashed,
-				CustomerID: customerInput.ID,
-				CreatedAt:  &now,
-				ModifiedAt: nil,
-				DeletedAt:  nil,
-			})
+			apiKey := NewAPIKey(
+				customer.ID,
+				hashed,
+				now,
+				nil,
+				nil,
+			)
+
+			_, err = store.CreateAPIKey(txCtx, apiKey)
 			if err != nil {
 				return nil, customerrors.NewInfrastructureError(
 					customerrors.ErrCodeDatabaseFailure,
@@ -104,56 +86,44 @@ func CreateCustomer(
 	)
 }
 
-func GetOneCustomerByAPIKey(
-	ctx context.Context,
-	store CustomersStore,
-	apiKey string,
-) (*Customer, error) {
-	customer, err := store.GetByAPIKey(ctx, apiKey)
+// func GetOneCustomerByAPIKey(
+// 	ctx context.Context,
+// 	store CustomersStore,
+// 	apiKey string,
+// ) (*Customer, error) {
+// 	customer, err := store.GetByAPIKey(ctx, apiKey)
 
-	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		return nil, customerrors.NewInfrastructureError(
-			customerrors.ErrCodeDatabaseFailure,
-			err.Error(),
-			err,
-		)
-	}
+// 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+// 		return nil, customerrors.NewInfrastructureError(
+// 			customerrors.ErrCodeDatabaseFailure,
+// 			err.Error(),
+// 			err,
+// 		)
+// 	}
 
-	if customer == nil {
-		return nil, nil
-	}
+// 	if customer == nil {
+// 		return nil, nil
+// 	}
 
-	return customer, nil
-}
+// 	return customer, nil
+// }
 
 func DisableCustomer(
 	ctx context.Context,
 	tx dbutils.TxManager,
 	store CustomersStore,
-	input shared.DeleteCustomerInput,
+	input uuid.UUID,
 ) error {
-	_, err := store.GetByID(ctx, input.CustomerID)
-	if err != nil && !dbutils.IsNoRowsError(err) {
-		return customerrors.NewInfrastructureError(
-			customerrors.ErrCodeDatabaseFailure,
-			err.Error(),
-			err,
-		)
-	}
-
-	if dbutils.IsNoRowsError(err) {
-		return customerrors.NewApplicationError(
-			customerrors.ErrCodeNotFound,
-			"customer not found",
-			nil,
-		)
+	_, err := store.GetByID(ctx, input)
+	if err != nil {
+		return err
 	}
 
 	deletionErr := dbutils.WithinTransactionReturningErr(
 		ctx,
 		tx,
 		func(txCtx context.Context) error {
-			err := store.Delete(txCtx, input.CustomerID)
+			err := store.Delete(txCtx, input)
 			if err != nil {
 				return customerrors.NewInfrastructureError(
 					customerrors.ErrCodeDatabaseFailure,
@@ -162,7 +132,7 @@ func DisableCustomer(
 				)
 			}
 
-			err = store.DeleteAllAPIKeysByCustomerID(txCtx, input.CustomerID)
+			err = store.RevokeAllAPIKeysByCustomerID(txCtx, input)
 			if err != nil {
 				return customerrors.NewInfrastructureError(
 					customerrors.ErrCodeDatabaseFailure,

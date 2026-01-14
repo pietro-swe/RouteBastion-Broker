@@ -1,61 +1,8 @@
 package shared
 
-import (
-	"time"
-
-	uuid "github.com/satori/go.uuid"
-)
-
-type CreateCustomerInput struct {
-	Name               string `json:"name"               binding:"required"`
-	BusinessIdentifier string `json:"businessIdentifier" binding:"required"`
-}
-
-type DeleteCustomerInput struct {
-	CustomerID uuid.UUID
-}
-
 type SaveCustomerInput struct {
-	ID                 uuid.UUID
-	Name               string
-	BusinessIdentifier string
-	APIKey             string
-	CreatedAt          *time.Time
-	ModifiedAt         *time.Time
-	DeletedAt          *time.Time
-}
-
-type CustomerOutput struct {
-	ID                 uuid.UUID
-	Name               string
-	BusinessIdentifier string
-	APIKey             string
-	CreatedAt          *time.Time
-	ModifiedAt         *time.Time
-	DeletedAt          *time.Time
-}
-
-type SaveAPIKeyInput struct {
-	ID         uuid.UUID
-	APIKey     string
-	CustomerID uuid.UUID
-	CreatedAt  *time.Time
-	ModifiedAt *time.Time
-	DeletedAt  *time.Time
-}
-
-// type GetCustomerByApiKeyDTO struct {
-// 	ApiKey string `json:"apiKey" binding:"required,uuid4"`
-// }
-
-// type CreateVehicleDTO struct {
-// 	Plate     string             `json:"plate"     binding:"required"`
-// 	CargoType entities.CargoKind `json:"cargoType" binding:"required,cargoKind"`
-// 	Capacity  float64            `json:"capacity"  binding:"required,min=1"`
-// }
-
-type GetAllVehiclesByAPIKey struct {
-	APIKey string
+	Name               string `json:"name" binding:"required,min=3"`
+	BusinessIdentifier string `json:"businessIdentifier" binding:"required,min=1"`
 }
 
 type Point struct {
@@ -115,13 +62,4 @@ type GoogleWaypoint struct {
 type GoogleLatLng struct {
 	Latitude  float64 `json:"latitude"`
 	Longitude float64 `json:"longitude"`
-}
-
-type CreateProviderInput struct {
-	Name string `json:"name" binding:"required,min=1"`
-}
-
-type UpdateProviderInput struct {
-	ID   string
-	Name string `json:"name" binding:"required,min=1"`
 }

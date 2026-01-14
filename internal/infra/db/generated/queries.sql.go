@@ -9,22 +9,21 @@ import (
 	"context"
 
 	"github.com/jackc/pgx/v5/pgtype"
-	go_uuid "github.com/satori/go.uuid"
 )
 
 const createApiKey = `-- name: CreateApiKey :one
 
 INSERT INTO api_keys (
-  id, key, customer_id, created_at
+  id, key_hash, customer_id, created_at
 ) VALUES (
   $1, $2, $3, $4
-) RETURNING id, key, customer_id, created_at, modified_at, deleted_at
+) RETURNING id, customer_id, key_hash, revoked_at, last_used_at, created_at
 `
 
 type CreateApiKeyParams struct {
-	ID         go_uuid.UUID
-	Key        string
-	CustomerID go_uuid.UUID
+	ID         pgtype.UUID
+	KeyHash    string
+	CustomerID pgtype.UUID
 	CreatedAt  pgtype.Timestamp
 }
 
@@ -32,18 +31,18 @@ type CreateApiKeyParams struct {
 func (q *Queries) CreateApiKey(ctx context.Context, arg CreateApiKeyParams) (ModelApiKey, error) {
 	row := q.db.QueryRow(ctx, createApiKey,
 		arg.ID,
-		arg.Key,
+		arg.KeyHash,
 		arg.CustomerID,
 		arg.CreatedAt,
 	)
 	var i ModelApiKey
 	err := row.Scan(
 		&i.ID,
-		&i.Key,
 		&i.CustomerID,
+		&i.KeyHash,
+		&i.RevokedAt,
+		&i.LastUsedAt,
 		&i.CreatedAt,
-		&i.ModifiedAt,
-		&i.DeletedAt,
 	)
 	return i, err
 }
@@ -51,21 +50,27 @@ func (q *Queries) CreateApiKey(ctx context.Context, arg CreateApiKeyParams) (Mod
 const createCustomer = `-- name: CreateCustomer :one
 
 INSERT INTO customers (
-  id, name, business_identifier
+  id, name, business_identifier, created_at
 ) VALUES (
-  $1, $2, $3
+  $1, $2, $3, $4
 ) RETURNING id, name, business_identifier, created_at, modified_at, deleted_at
 `
 
 type CreateCustomerParams struct {
-	ID                 go_uuid.UUID
+	ID                 pgtype.UUID
 	Name               string
 	BusinessIdentifier string
+	CreatedAt          pgtype.Timestamp
 }
 
 // Customers
 func (q *Queries) CreateCustomer(ctx context.Context, arg CreateCustomerParams) (ModelCustomer, error) {
-	row := q.db.QueryRow(ctx, createCustomer, arg.ID, arg.Name, arg.BusinessIdentifier)
+	row := q.db.QueryRow(ctx, createCustomer,
+		arg.ID,
+		arg.Name,
+		arg.BusinessIdentifier,
+		arg.CreatedAt,
+	)
 	var i ModelCustomer
 	err := row.Scan(
 		&i.ID,
@@ -78,18 +83,95 @@ func (q *Queries) CreateCustomer(ctx context.Context, arg CreateCustomerParams) 
 	return i, err
 }
 
+const createOptimization = `-- name: CreateOptimization :one
+
+INSERT INTO optimizations (
+  id, customer_id, kind, created_at
+) VALUES (
+  $1, $2, $3, $4
+) RETURNING id, customer_id, kind, created_at
+`
+
+type CreateOptimizationParams struct {
+	ID         pgtype.UUID
+	CustomerID pgtype.UUID
+	Kind       RequestKind
+	CreatedAt  pgtype.Timestamp
+}
+
+// Optimizations
+func (q *Queries) CreateOptimization(ctx context.Context, arg CreateOptimizationParams) (Optimization, error) {
+	row := q.db.QueryRow(ctx, createOptimization,
+		arg.ID,
+		arg.CustomerID,
+		arg.Kind,
+		arg.CreatedAt,
+	)
+	var i Optimization
+	err := row.Scan(
+		&i.ID,
+		&i.CustomerID,
+		&i.Kind,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const createOptimizationRun = `-- name: CreateOptimizationRun :one
+INSERT INTO optimization_runs (
+  id, optimization_id, provider_id, status, started_at
+) VALUES (
+  $1, $2, $3, $4, $5
+) RETURNING id, optimization_id, provider_id, status, cost, started_at, ended_at
+`
+
+type CreateOptimizationRunParams struct {
+	ID             pgtype.UUID
+	OptimizationID pgtype.UUID
+	ProviderID     pgtype.UUID
+	Status         OptimizationStatus
+	StartedAt      pgtype.Timestamp
+}
+
+func (q *Queries) CreateOptimizationRun(ctx context.Context, arg CreateOptimizationRunParams) (OptimizationRun, error) {
+	row := q.db.QueryRow(ctx, createOptimizationRun,
+		arg.ID,
+		arg.OptimizationID,
+		arg.ProviderID,
+		arg.Status,
+		arg.StartedAt,
+	)
+	var i OptimizationRun
+	err := row.Scan(
+		&i.ID,
+		&i.OptimizationID,
+		&i.ProviderID,
+		&i.Status,
+		&i.Cost,
+		&i.StartedAt,
+		&i.EndedAt,
+	)
+	return i, err
+}
+
 const createProvider = `-- name: CreateProvider :one
 
 INSERT INTO providers (
-  name
+  id, name, created_at
 ) VALUES (
-  $1
+  $1, $2, $3
 ) RETURNING id, name, created_at, modified_at, deleted_at
 `
 
+type CreateProviderParams struct {
+	ID        pgtype.UUID
+	Name      string
+	CreatedAt pgtype.Timestamp
+}
+
 // Providers
-func (q *Queries) CreateProvider(ctx context.Context, name string) (ModelProvider, error) {
-	row := q.db.QueryRow(ctx, createProvider, name)
+func (q *Queries) CreateProvider(ctx context.Context, arg CreateProviderParams) (ModelProvider, error) {
+	row := q.db.QueryRow(ctx, createProvider, arg.ID, arg.Name, arg.CreatedAt)
 	var i ModelProvider
 	err := row.Scan(
 		&i.ID,
@@ -101,46 +183,36 @@ func (q *Queries) CreateProvider(ctx context.Context, name string) (ModelProvide
 	return i, err
 }
 
-const createVehicle = `-- name: CreateVehicle :one
-
-INSERT INTO vehicles (
-  id,
-  plate,
-  capacity,
-  cargo_type,
-  customer_id,
-  created_at
+const createProviderAccessMethod = `-- name: CreateProviderAccessMethod :one
+INSERT INTO provider_access_methods (
+  id, provider_id, communication_method, url, created_at
 ) VALUES (
-  $1, $2, $3, $4, $5, $6
-) RETURNING id, plate, capacity, cargo_type, customer_id, created_at, modified_at, deleted_at
+  $1, $2, $3, $4, $5
+) RETURNING id, provider_id, communication_method, url, created_at, modified_at, deleted_at
 `
 
-type CreateVehicleParams struct {
-	ID         go_uuid.UUID
-	Plate      string
-	Capacity   float64
-	CargoType  CargoKind
-	CustomerID go_uuid.UUID
-	CreatedAt  pgtype.Timestamp
+type CreateProviderAccessMethodParams struct {
+	ID                  pgtype.UUID
+	ProviderID          pgtype.UUID
+	CommunicationMethod CommunicationMethod
+	Url                 string
+	CreatedAt           pgtype.Timestamp
 }
 
-// Vehicles
-func (q *Queries) CreateVehicle(ctx context.Context, arg CreateVehicleParams) (ModelVehicle, error) {
-	row := q.db.QueryRow(ctx, createVehicle,
+func (q *Queries) CreateProviderAccessMethod(ctx context.Context, arg CreateProviderAccessMethodParams) (ProviderAccessMethod, error) {
+	row := q.db.QueryRow(ctx, createProviderAccessMethod,
 		arg.ID,
-		arg.Plate,
-		arg.Capacity,
-		arg.CargoType,
-		arg.CustomerID,
+		arg.ProviderID,
+		arg.CommunicationMethod,
+		arg.Url,
 		arg.CreatedAt,
 	)
-	var i ModelVehicle
+	var i ProviderAccessMethod
 	err := row.Scan(
 		&i.ID,
-		&i.Plate,
-		&i.Capacity,
-		&i.CargoType,
-		&i.CustomerID,
+		&i.ProviderID,
+		&i.CommunicationMethod,
+		&i.Url,
 		&i.CreatedAt,
 		&i.ModifiedAt,
 		&i.DeletedAt,
@@ -148,157 +220,227 @@ func (q *Queries) CreateVehicle(ctx context.Context, arg CreateVehicleParams) (M
 	return i, err
 }
 
-const deleteAllApiKeysByCustomerID = `-- name: DeleteAllApiKeysByCustomerID :exec
-UPDATE api_keys
-SET
-  modified_at = $2,
-  deleted_at = $3
-WHERE customer_id = $1
+const createProviderConstraint = `-- name: CreateProviderConstraint :one
+INSERT INTO provider_constraints (
+  id, provider_id, max_waypoints_per_request
+) VALUES (
+  $1, $2, $3
+) RETURNING id, provider_id, max_waypoints_per_request, modified_at
 `
 
-type DeleteAllApiKeysByCustomerIDParams struct {
-	CustomerID go_uuid.UUID
-	ModifiedAt pgtype.Timestamp
-	DeletedAt  pgtype.Timestamp
+type CreateProviderConstraintParams struct {
+	ID                     pgtype.UUID
+	ProviderID             pgtype.UUID
+	MaxWaypointsPerRequest int32
 }
 
-func (q *Queries) DeleteAllApiKeysByCustomerID(ctx context.Context, arg DeleteAllApiKeysByCustomerIDParams) error {
-	_, err := q.db.Exec(ctx, deleteAllApiKeysByCustomerID, arg.CustomerID, arg.ModifiedAt, arg.DeletedAt)
-	return err
+func (q *Queries) CreateProviderConstraint(ctx context.Context, arg CreateProviderConstraintParams) (ProviderConstraint, error) {
+	row := q.db.QueryRow(ctx, createProviderConstraint, arg.ID, arg.ProviderID, arg.MaxWaypointsPerRequest)
+	var i ProviderConstraint
+	err := row.Scan(
+		&i.ID,
+		&i.ProviderID,
+		&i.MaxWaypointsPerRequest,
+		&i.ModifiedAt,
+	)
+	return i, err
 }
 
-const deleteApiKey = `-- name: DeleteApiKey :exec
-UPDATE api_keys
-SET
-	modified_at = $2,
-	deleted_at = $3
-WHERE id = $1
+const createProviderFeature = `-- name: CreateProviderFeature :one
+INSERT INTO provider_features (
+  id, provider_id, supports_async_operations
+) VALUES (
+  $1, $2, $3
+) RETURNING id, provider_id, supports_async_operations, modified_at
 `
 
-type DeleteApiKeyParams struct {
-	ID         go_uuid.UUID
-	ModifiedAt pgtype.Timestamp
-	DeletedAt  pgtype.Timestamp
+type CreateProviderFeatureParams struct {
+	ID                      pgtype.UUID
+	ProviderID              pgtype.UUID
+	SupportsAsyncOperations bool
 }
 
-func (q *Queries) DeleteApiKey(ctx context.Context, arg DeleteApiKeyParams) error {
-	_, err := q.db.Exec(ctx, deleteApiKey, arg.ID, arg.ModifiedAt, arg.DeletedAt)
-	return err
+func (q *Queries) CreateProviderFeature(ctx context.Context, arg CreateProviderFeatureParams) (ProviderFeature, error) {
+	row := q.db.QueryRow(ctx, createProviderFeature, arg.ID, arg.ProviderID, arg.SupportsAsyncOperations)
+	var i ProviderFeature
+	err := row.Scan(
+		&i.ID,
+		&i.ProviderID,
+		&i.SupportsAsyncOperations,
+		&i.ModifiedAt,
+	)
+	return i, err
 }
 
-const deleteConstraint = `-- name: DeleteConstraint :exec
-UPDATE constraints
-  SET deleted_at = $2
-WHERE constraints.id = $1
-`
-
-type DeleteConstraintParams struct {
-	ID        go_uuid.UUID
-	DeletedAt pgtype.Timestamp
-}
-
-func (q *Queries) DeleteConstraint(ctx context.Context, arg DeleteConstraintParams) error {
-	_, err := q.db.Exec(ctx, deleteConstraint, arg.ID, arg.DeletedAt)
-	return err
-}
-
-const deleteProvider = `-- name: DeleteProvider :exec
-UPDATE providers p
-SET
-  modified_at = $2,
-  deleted_at = $3
-WHERE p.id = $1
-`
-
-type DeleteProviderParams struct {
-	ID         go_uuid.UUID
-	ModifiedAt pgtype.Timestamp
-	DeletedAt  pgtype.Timestamp
-}
-
-func (q *Queries) DeleteProvider(ctx context.Context, arg DeleteProviderParams) error {
-	_, err := q.db.Exec(ctx, deleteProvider, arg.ID, arg.ModifiedAt, arg.DeletedAt)
-	return err
-}
-
-const deleteVehicle = `-- name: DeleteVehicle :exec
-UPDATE vehicles
-  SET deleted_at = $2
-WHERE vehicles.id = $1
-`
-
-type DeleteVehicleParams struct {
-	ID        go_uuid.UUID
-	DeletedAt pgtype.Timestamp
-}
-
-func (q *Queries) DeleteVehicle(ctx context.Context, arg DeleteVehicleParams) error {
-	_, err := q.db.Exec(ctx, deleteVehicle, arg.ID, arg.DeletedAt)
-	return err
-}
-
-const disableCustomer = `-- name: DisableCustomer :exec
+const deleteCustomer = `-- name: DeleteCustomer :exec
 UPDATE customers
   SET deleted_at = $2
 WHERE customers.id = $1
 `
 
-type DisableCustomerParams struct {
-	ID        go_uuid.UUID
+type DeleteCustomerParams struct {
+	ID        pgtype.UUID
 	DeletedAt pgtype.Timestamp
 }
 
-func (q *Queries) DisableCustomer(ctx context.Context, arg DisableCustomerParams) error {
-	_, err := q.db.Exec(ctx, disableCustomer, arg.ID, arg.DeletedAt)
+func (q *Queries) DeleteCustomer(ctx context.Context, arg DeleteCustomerParams) error {
+	_, err := q.db.Exec(ctx, deleteCustomer, arg.ID, arg.DeletedAt)
 	return err
 }
 
-const getActiveOptimizationsByCustomerID = `-- name: GetActiveOptimizationsByCustomerID :many
-
-SELECT
-  optimizations.id, optimizations.customer_id, optimizations.selected_cloud_id, optimizations.status, optimizations.kind, optimizations.cost, optimizations.started_at, optimizations.ended_at, optimizations.created_at, optimizations.modified_at,
-  optimization_waypoints.id, optimization_waypoints.optimization_id, optimization_waypoints.latitude, optimization_waypoints.longitude,
-  optimization_vehicles.optimization_id, optimization_vehicles.vehicle_id
-FROM optimizations
-  INNER JOIN optimization_waypoints ON optimizations.id = optimization_waypoints.optimization_id
-  INNER JOIN optimization_vehicles ON optimizations.id = optimization_vehicles.optimization_id
-WHERE (optimizations.customer_id, optimizations.ended_at) = ($1, NULL)
-ORDER BY optimizations.created_at DESC
+const deleteProvider = `-- name: DeleteProvider :exec
+UPDATE providers AS p
+SET
+  deleted_at = $2,
+  modified_at = $3
+WHERE p.id = $1
 `
 
-type GetActiveOptimizationsByCustomerIDRow struct {
-	ModelOptimization         ModelOptimization
-	ModelOptimizationWaypoint ModelOptimizationWaypoint
-	ModelOptimizationVehicle  ModelOptimizationVehicle
+type DeleteProviderParams struct {
+	ID         pgtype.UUID
+	DeletedAt  pgtype.Timestamp
+	ModifiedAt pgtype.Timestamp
 }
 
-// Optimizations
-func (q *Queries) GetActiveOptimizationsByCustomerID(ctx context.Context, customerID go_uuid.UUID) ([]GetActiveOptimizationsByCustomerIDRow, error) {
-	rows, err := q.db.Query(ctx, getActiveOptimizationsByCustomerID, customerID)
+func (q *Queries) DeleteProvider(ctx context.Context, arg DeleteProviderParams) error {
+	_, err := q.db.Exec(ctx, deleteProvider, arg.ID, arg.DeletedAt, arg.ModifiedAt)
+	return err
+}
+
+const deleteProviderAccessMethod = `-- name: DeleteProviderAccessMethod :exec
+UPDATE provider_access_methods AS pam
+SET
+  deleted_at = $2,
+  modified_at = $3
+WHERE pam.id = $1
+`
+
+type DeleteProviderAccessMethodParams struct {
+	ID         pgtype.UUID
+	DeletedAt  pgtype.Timestamp
+	ModifiedAt pgtype.Timestamp
+}
+
+func (q *Queries) DeleteProviderAccessMethod(ctx context.Context, arg DeleteProviderAccessMethodParams) error {
+	_, err := q.db.Exec(ctx, deleteProviderAccessMethod, arg.ID, arg.DeletedAt, arg.ModifiedAt)
+	return err
+}
+
+const getActiveOptimizationRunsByCustomerID = `-- name: GetActiveOptimizationRunsByCustomerID :many
+WITH optimization AS (
+  SELECT
+    o.id
+  FROM optimizations AS o
+  WHERE o.customer_id = $1
+)
+SELECT
+  optr.id, optr.optimization_id, optr.provider_id, optr.status, optr.cost, optr.started_at, optr.ended_at
+FROM optimization_runs AS optr
+JOIN optimization AS o
+  ON optr.optimization_id = o.id
+WHERE optr.ended_at IS NULL
+ORDER BY optr.started_at DESC
+`
+
+type GetActiveOptimizationRunsByCustomerIDRow struct {
+	OptimizationRun OptimizationRun
+}
+
+func (q *Queries) GetActiveOptimizationRunsByCustomerID(ctx context.Context, customerID pgtype.UUID) ([]GetActiveOptimizationRunsByCustomerIDRow, error) {
+	rows, err := q.db.Query(ctx, getActiveOptimizationRunsByCustomerID, customerID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []GetActiveOptimizationsByCustomerIDRow{}
+	items := []GetActiveOptimizationRunsByCustomerIDRow{}
 	for rows.Next() {
-		var i GetActiveOptimizationsByCustomerIDRow
+		var i GetActiveOptimizationRunsByCustomerIDRow
 		if err := rows.Scan(
-			&i.ModelOptimization.ID,
-			&i.ModelOptimization.CustomerID,
-			&i.ModelOptimization.SelectedCloudID,
-			&i.ModelOptimization.Status,
-			&i.ModelOptimization.Kind,
-			&i.ModelOptimization.Cost,
-			&i.ModelOptimization.StartedAt,
-			&i.ModelOptimization.EndedAt,
-			&i.ModelOptimization.CreatedAt,
-			&i.ModelOptimization.ModifiedAt,
-			&i.ModelOptimizationWaypoint.ID,
-			&i.ModelOptimizationWaypoint.OptimizationID,
-			&i.ModelOptimizationWaypoint.Latitude,
-			&i.ModelOptimizationWaypoint.Longitude,
-			&i.ModelOptimizationVehicle.OptimizationID,
-			&i.ModelOptimizationVehicle.VehicleID,
+			&i.OptimizationRun.ID,
+			&i.OptimizationRun.OptimizationID,
+			&i.OptimizationRun.ProviderID,
+			&i.OptimizationRun.Status,
+			&i.OptimizationRun.Cost,
+			&i.OptimizationRun.StartedAt,
+			&i.OptimizationRun.EndedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getActiveProviderAccessMethodsByProviderID = `-- name: GetActiveProviderAccessMethodsByProviderID :many
+SELECT
+  pam.id, pam.provider_id, pam.communication_method, pam.url, pam.created_at, pam.modified_at, pam.deleted_at
+FROM provider_access_methods AS pam
+WHERE (pam.provider_id, pam.deleted_at) = ($1, NULL)
+ORDER BY pam.created_at ASC
+`
+
+type GetActiveProviderAccessMethodsByProviderIDRow struct {
+	ProviderAccessMethod ProviderAccessMethod
+}
+
+func (q *Queries) GetActiveProviderAccessMethodsByProviderID(ctx context.Context, providerID pgtype.UUID) ([]GetActiveProviderAccessMethodsByProviderIDRow, error) {
+	rows, err := q.db.Query(ctx, getActiveProviderAccessMethodsByProviderID, providerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetActiveProviderAccessMethodsByProviderIDRow{}
+	for rows.Next() {
+		var i GetActiveProviderAccessMethodsByProviderIDRow
+		if err := rows.Scan(
+			&i.ProviderAccessMethod.ID,
+			&i.ProviderAccessMethod.ProviderID,
+			&i.ProviderAccessMethod.CommunicationMethod,
+			&i.ProviderAccessMethod.Url,
+			&i.ProviderAccessMethod.CreatedAt,
+			&i.ProviderAccessMethod.ModifiedAt,
+			&i.ProviderAccessMethod.DeletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getActiveProviders = `-- name: GetActiveProviders :many
+SELECT
+  p.id, p.name, p.created_at, p.modified_at, p.deleted_at
+FROM providers AS p
+WHERE p.deleted_at IS NULL
+ORDER BY p.name ASC
+`
+
+type GetActiveProvidersRow struct {
+	ModelProvider ModelProvider
+}
+
+func (q *Queries) GetActiveProviders(ctx context.Context) ([]GetActiveProvidersRow, error) {
+	rows, err := q.db.Query(ctx, getActiveProviders)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetActiveProvidersRow{}
+	for rows.Next() {
+		var i GetActiveProvidersRow
+		if err := rows.Scan(
+			&i.ModelProvider.ID,
+			&i.ModelProvider.Name,
+			&i.ModelProvider.CreatedAt,
+			&i.ModelProvider.ModifiedAt,
+			&i.ModelProvider.DeletedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -312,19 +454,13 @@ func (q *Queries) GetActiveOptimizationsByCustomerID(ctx context.Context, custom
 
 const getAllProviders = `-- name: GetAllProviders :many
 SELECT
-  providers.id, providers.name, providers.created_at, providers.modified_at, providers.deleted_at,
-  provider_communication.id, provider_communication.provider_id, provider_communication.accessible_with, provider_communication.url, provider_communication.created_at, provider_communication.modified_at, provider_communication.deleted_at,
-  provider_constraints_and_features.id, provider_constraints_and_features.provider_id, provider_constraints_and_features.max_waypoints, provider_constraints_and_features.supports_async_batch_requests
-FROM providers
-  JOIN provider_communication ON providers.id = provider_communication.provider_id
-  JOIN provider_constraints_and_features ON providers.id = provider_constraints_and_features.provider_id
-ORDER BY providers.name ASC
+  p.id, p.name, p.created_at, p.modified_at, p.deleted_at
+FROM providers AS p
+ORDER BY p.name ASC
 `
 
 type GetAllProvidersRow struct {
-	ModelProvider                       ModelProvider
-	ModelProviderCommunication          ModelProviderCommunication
-	ModelProviderConstraintsAndFeatures ModelProviderConstraintsAndFeatures
+	ModelProvider ModelProvider
 }
 
 func (q *Queries) GetAllProviders(ctx context.Context) ([]GetAllProvidersRow, error) {
@@ -342,141 +478,6 @@ func (q *Queries) GetAllProviders(ctx context.Context) ([]GetAllProvidersRow, er
 			&i.ModelProvider.CreatedAt,
 			&i.ModelProvider.ModifiedAt,
 			&i.ModelProvider.DeletedAt,
-			&i.ModelProviderCommunication.ID,
-			&i.ModelProviderCommunication.ProviderID,
-			&i.ModelProviderCommunication.AccessibleWith,
-			&i.ModelProviderCommunication.Url,
-			&i.ModelProviderCommunication.CreatedAt,
-			&i.ModelProviderCommunication.ModifiedAt,
-			&i.ModelProviderCommunication.DeletedAt,
-			&i.ModelProviderConstraintsAndFeatures.ID,
-			&i.ModelProviderConstraintsAndFeatures.ProviderID,
-			&i.ModelProviderConstraintsAndFeatures.MaxWaypoints,
-			&i.ModelProviderConstraintsAndFeatures.SupportsAsyncBatchRequests,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const getApiKeyByCustomerID = `-- name: GetApiKeyByCustomerID :one
-SELECT
-  ak.id,
-  ak.key,
-  ak.customer_id,
-  ak.created_at,
-  ak.modified_at,
-  ak.deleted_at
-FROM api_keys AS ak
-WHERE (ak.customer_id, ak.deleted_at) = ($1, NULL)
-ORDER BY ak.created_at DESC
-LIMIT 1
-`
-
-func (q *Queries) GetApiKeyByCustomerID(ctx context.Context, customerID go_uuid.UUID) (ModelApiKey, error) {
-	row := q.db.QueryRow(ctx, getApiKeyByCustomerID, customerID)
-	var i ModelApiKey
-	err := row.Scan(
-		&i.ID,
-		&i.Key,
-		&i.CustomerID,
-		&i.CreatedAt,
-		&i.ModifiedAt,
-		&i.DeletedAt,
-	)
-	return i, err
-}
-
-const getAvailableProviders = `-- name: GetAvailableProviders :many
-SELECT
-  providers.id, providers.name, providers.created_at, providers.modified_at, providers.deleted_at,
-  provider_communication.id, provider_communication.provider_id, provider_communication.accessible_with, provider_communication.url, provider_communication.created_at, provider_communication.modified_at, provider_communication.deleted_at,
-  provider_constraints_and_features.id, provider_constraints_and_features.provider_id, provider_constraints_and_features.max_waypoints, provider_constraints_and_features.supports_async_batch_requests
-FROM providers
-  JOIN provider_communication ON providers.id = provider_communication.provider_id
-  JOIN provider_constraints_and_features ON providers.id = provider_constraints_and_features.provider_id
-WHERE providers.deleted_at IS NULL
-ORDER BY providers.name ASC
-`
-
-type GetAvailableProvidersRow struct {
-	ModelProvider                       ModelProvider
-	ModelProviderCommunication          ModelProviderCommunication
-	ModelProviderConstraintsAndFeatures ModelProviderConstraintsAndFeatures
-}
-
-func (q *Queries) GetAvailableProviders(ctx context.Context) ([]GetAvailableProvidersRow, error) {
-	rows, err := q.db.Query(ctx, getAvailableProviders)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []GetAvailableProvidersRow{}
-	for rows.Next() {
-		var i GetAvailableProvidersRow
-		if err := rows.Scan(
-			&i.ModelProvider.ID,
-			&i.ModelProvider.Name,
-			&i.ModelProvider.CreatedAt,
-			&i.ModelProvider.ModifiedAt,
-			&i.ModelProvider.DeletedAt,
-			&i.ModelProviderCommunication.ID,
-			&i.ModelProviderCommunication.ProviderID,
-			&i.ModelProviderCommunication.AccessibleWith,
-			&i.ModelProviderCommunication.Url,
-			&i.ModelProviderCommunication.CreatedAt,
-			&i.ModelProviderCommunication.ModifiedAt,
-			&i.ModelProviderCommunication.DeletedAt,
-			&i.ModelProviderConstraintsAndFeatures.ID,
-			&i.ModelProviderConstraintsAndFeatures.ProviderID,
-			&i.ModelProviderConstraintsAndFeatures.MaxWaypoints,
-			&i.ModelProviderConstraintsAndFeatures.SupportsAsyncBatchRequests,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const getConstraintsByCustomerID = `-- name: GetConstraintsByCustomerID :many
-SELECT
-  c.id,
-  c.customer_id,
-  c.kind,
-  c.value,
-  c.created_at,
-  c.modified_at,
-  c.deleted_at
-FROM constraints AS c
-WHERE (c.customer_id, c.deleted_at) = ($1, NULL)
-`
-
-func (q *Queries) GetConstraintsByCustomerID(ctx context.Context, customerID go_uuid.UUID) ([]Constraint, error) {
-	rows, err := q.db.Query(ctx, getConstraintsByCustomerID, customerID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []Constraint{}
-	for rows.Next() {
-		var i Constraint
-		if err := rows.Scan(
-			&i.ID,
-			&i.CustomerID,
-			&i.Kind,
-			&i.Value,
-			&i.CreatedAt,
-			&i.ModifiedAt,
-			&i.DeletedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -490,22 +491,20 @@ func (q *Queries) GetConstraintsByCustomerID(ctx context.Context, customerID go_
 
 const getCustomerByApiKey = `-- name: GetCustomerByApiKey :one
 SELECT
-  c.id, c.name, c.business_identifier, c.created_at, c.modified_at, c.deleted_at,
-  ak.id, ak.key, ak.customer_id, ak.created_at, ak.modified_at, ak.deleted_at
+  c.id, c.name, c.business_identifier, c.created_at, c.modified_at, c.deleted_at
 FROM customers AS c
 JOIN api_keys AS ak
   ON c.id = ak.customer_id
-WHERE ak.key = $1
+WHERE ak.key_hash = $1
 LIMIT 1
 `
 
 type GetCustomerByApiKeyRow struct {
 	ModelCustomer ModelCustomer
-	ModelApiKey   ModelApiKey
 }
 
-func (q *Queries) GetCustomerByApiKey(ctx context.Context, key string) (GetCustomerByApiKeyRow, error) {
-	row := q.db.QueryRow(ctx, getCustomerByApiKey, key)
+func (q *Queries) GetCustomerByApiKey(ctx context.Context, keyHash string) (GetCustomerByApiKeyRow, error) {
+	row := q.db.QueryRow(ctx, getCustomerByApiKey, keyHash)
 	var i GetCustomerByApiKeyRow
 	err := row.Scan(
 		&i.ModelCustomer.ID,
@@ -514,30 +513,20 @@ func (q *Queries) GetCustomerByApiKey(ctx context.Context, key string) (GetCusto
 		&i.ModelCustomer.CreatedAt,
 		&i.ModelCustomer.ModifiedAt,
 		&i.ModelCustomer.DeletedAt,
-		&i.ModelApiKey.ID,
-		&i.ModelApiKey.Key,
-		&i.ModelApiKey.CustomerID,
-		&i.ModelApiKey.CreatedAt,
-		&i.ModelApiKey.ModifiedAt,
-		&i.ModelApiKey.DeletedAt,
 	)
 	return i, err
 }
 
 const getCustomerByBusinessIdentifier = `-- name: GetCustomerByBusinessIdentifier :one
 SELECT
-  c.id, c.name, c.business_identifier, c.created_at, c.modified_at, c.deleted_at,
-  ak.id, ak.key, ak.customer_id, ak.created_at, ak.modified_at, ak.deleted_at
+  c.id, c.name, c.business_identifier, c.created_at, c.modified_at, c.deleted_at
 FROM customers AS c
-JOIN api_keys AS ak
-  ON c.id = ak.customer_id
 WHERE c.business_identifier = $1
 LIMIT 1
 `
 
 type GetCustomerByBusinessIdentifierRow struct {
 	ModelCustomer ModelCustomer
-	ModelApiKey   ModelApiKey
 }
 
 func (q *Queries) GetCustomerByBusinessIdentifier(ctx context.Context, businessIdentifier string) (GetCustomerByBusinessIdentifierRow, error) {
@@ -550,33 +539,23 @@ func (q *Queries) GetCustomerByBusinessIdentifier(ctx context.Context, businessI
 		&i.ModelCustomer.CreatedAt,
 		&i.ModelCustomer.ModifiedAt,
 		&i.ModelCustomer.DeletedAt,
-		&i.ModelApiKey.ID,
-		&i.ModelApiKey.Key,
-		&i.ModelApiKey.CustomerID,
-		&i.ModelApiKey.CreatedAt,
-		&i.ModelApiKey.ModifiedAt,
-		&i.ModelApiKey.DeletedAt,
 	)
 	return i, err
 }
 
 const getCustomerByID = `-- name: GetCustomerByID :one
 SELECT
-  c.id, c.name, c.business_identifier, c.created_at, c.modified_at, c.deleted_at,
-  ak.id, ak.key, ak.customer_id, ak.created_at, ak.modified_at, ak.deleted_at
+  c.id, c.name, c.business_identifier, c.created_at, c.modified_at, c.deleted_at
 FROM customers AS c
-JOIN api_keys AS ak
-  ON c.id = ak.customer_id
 WHERE c.id = $1
 LIMIT 1
 `
 
 type GetCustomerByIDRow struct {
 	ModelCustomer ModelCustomer
-	ModelApiKey   ModelApiKey
 }
 
-func (q *Queries) GetCustomerByID(ctx context.Context, id go_uuid.UUID) (GetCustomerByIDRow, error) {
+func (q *Queries) GetCustomerByID(ctx context.Context, id pgtype.UUID) (GetCustomerByIDRow, error) {
 	row := q.db.QueryRow(ctx, getCustomerByID, id)
 	var i GetCustomerByIDRow
 	err := row.Scan(
@@ -586,241 +565,257 @@ func (q *Queries) GetCustomerByID(ctx context.Context, id go_uuid.UUID) (GetCust
 		&i.ModelCustomer.CreatedAt,
 		&i.ModelCustomer.ModifiedAt,
 		&i.ModelCustomer.DeletedAt,
-		&i.ModelApiKey.ID,
-		&i.ModelApiKey.Key,
-		&i.ModelApiKey.CustomerID,
-		&i.ModelApiKey.CreatedAt,
-		&i.ModelApiKey.ModifiedAt,
-		&i.ModelApiKey.DeletedAt,
 	)
 	return i, err
 }
 
-const getManyVehiclesByCustomerID = `-- name: GetManyVehiclesByCustomerID :many
+const getLastUsedApiKeyByCustomerID = `-- name: GetLastUsedApiKeyByCustomerID :one
 SELECT
-  v.id,
-  v.plate,
-  v.capacity,
-  v.cargo_type,
-  v.customer_id,
-  v.created_at,
-  v.modified_at,
-  v.deleted_at
-FROM vehicles AS v
-WHERE (v.customer_id, v.deleted_at) = ($1, NULL)
+  ak.id, ak.customer_id, ak.key_hash, ak.revoked_at, ak.last_used_at, ak.created_at
+FROM api_keys AS ak
+WHERE (ak.customer_id, ak.revoked_at) = ($1, NULL)
+ORDER BY ak.last_used_at DESC NULLS LAST
+LIMIT 1
 `
 
-func (q *Queries) GetManyVehiclesByCustomerID(ctx context.Context, customerID go_uuid.UUID) ([]ModelVehicle, error) {
-	rows, err := q.db.Query(ctx, getManyVehiclesByCustomerID, customerID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []ModelVehicle{}
-	for rows.Next() {
-		var i ModelVehicle
-		if err := rows.Scan(
-			&i.ID,
-			&i.Plate,
-			&i.Capacity,
-			&i.CargoType,
-			&i.CustomerID,
-			&i.CreatedAt,
-			&i.ModifiedAt,
-			&i.DeletedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
+type GetLastUsedApiKeyByCustomerIDRow struct {
+	ModelApiKey ModelApiKey
 }
 
-const getOptimizationHistoryByCustomerID = `-- name: GetOptimizationHistoryByCustomerID :many
+func (q *Queries) GetLastUsedApiKeyByCustomerID(ctx context.Context, customerID pgtype.UUID) (GetLastUsedApiKeyByCustomerIDRow, error) {
+	row := q.db.QueryRow(ctx, getLastUsedApiKeyByCustomerID, customerID)
+	var i GetLastUsedApiKeyByCustomerIDRow
+	err := row.Scan(
+		&i.ModelApiKey.ID,
+		&i.ModelApiKey.CustomerID,
+		&i.ModelApiKey.KeyHash,
+		&i.ModelApiKey.RevokedAt,
+		&i.ModelApiKey.LastUsedAt,
+		&i.ModelApiKey.CreatedAt,
+	)
+	return i, err
+}
+
+const getMostRecentApiKeyByCustomerID = `-- name: GetMostRecentApiKeyByCustomerID :one
 SELECT
-  optimizations.id, optimizations.customer_id, optimizations.selected_cloud_id, optimizations.status, optimizations.kind, optimizations.cost, optimizations.started_at, optimizations.ended_at, optimizations.created_at, optimizations.modified_at,
-  optimization_waypoints.id, optimization_waypoints.optimization_id, optimization_waypoints.latitude, optimization_waypoints.longitude,
-  optimization_vehicles.optimization_id, optimization_vehicles.vehicle_id
-FROM optimizations
-  INNER JOIN optimization_waypoints ON optimizations.id = optimization_waypoints.optimization_id
-  INNER JOIN optimization_vehicles ON optimizations.id = optimization_vehicles.optimization_id
-WHERE optimizations.customer_id = $1
-ORDER BY optimizations.created_at DESC
+  ak.id, ak.customer_id, ak.key_hash, ak.revoked_at, ak.last_used_at, ak.created_at
+FROM api_keys AS ak
+WHERE (ak.customer_id, ak.revoked_at) = ($1, NULL)
+ORDER BY ak.created_at DESC
+LIMIT 1
 `
 
-type GetOptimizationHistoryByCustomerIDRow struct {
-	ModelOptimization         ModelOptimization
-	ModelOptimizationWaypoint ModelOptimizationWaypoint
-	ModelOptimizationVehicle  ModelOptimizationVehicle
+type GetMostRecentApiKeyByCustomerIDRow struct {
+	ModelApiKey ModelApiKey
 }
 
-func (q *Queries) GetOptimizationHistoryByCustomerID(ctx context.Context, customerID go_uuid.UUID) ([]GetOptimizationHistoryByCustomerIDRow, error) {
-	rows, err := q.db.Query(ctx, getOptimizationHistoryByCustomerID, customerID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []GetOptimizationHistoryByCustomerIDRow{}
-	for rows.Next() {
-		var i GetOptimizationHistoryByCustomerIDRow
-		if err := rows.Scan(
-			&i.ModelOptimization.ID,
-			&i.ModelOptimization.CustomerID,
-			&i.ModelOptimization.SelectedCloudID,
-			&i.ModelOptimization.Status,
-			&i.ModelOptimization.Kind,
-			&i.ModelOptimization.Cost,
-			&i.ModelOptimization.StartedAt,
-			&i.ModelOptimization.EndedAt,
-			&i.ModelOptimization.CreatedAt,
-			&i.ModelOptimization.ModifiedAt,
-			&i.ModelOptimizationWaypoint.ID,
-			&i.ModelOptimizationWaypoint.OptimizationID,
-			&i.ModelOptimizationWaypoint.Latitude,
-			&i.ModelOptimizationWaypoint.Longitude,
-			&i.ModelOptimizationVehicle.OptimizationID,
-			&i.ModelOptimizationVehicle.VehicleID,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
+func (q *Queries) GetMostRecentApiKeyByCustomerID(ctx context.Context, customerID pgtype.UUID) (GetMostRecentApiKeyByCustomerIDRow, error) {
+	row := q.db.QueryRow(ctx, getMostRecentApiKeyByCustomerID, customerID)
+	var i GetMostRecentApiKeyByCustomerIDRow
+	err := row.Scan(
+		&i.ModelApiKey.ID,
+		&i.ModelApiKey.CustomerID,
+		&i.ModelApiKey.KeyHash,
+		&i.ModelApiKey.RevokedAt,
+		&i.ModelApiKey.LastUsedAt,
+		&i.ModelApiKey.CreatedAt,
+	)
+	return i, err
 }
 
-const getProviderDetailsByID = `-- name: GetProviderDetailsByID :one
+const getOptimizationByID = `-- name: GetOptimizationByID :one
 SELECT
-	providers.id, providers.name, providers.created_at, providers.modified_at, providers.deleted_at,
-  provider_communication.id, provider_communication.provider_id, provider_communication.accessible_with, provider_communication.url, provider_communication.created_at, provider_communication.modified_at, provider_communication.deleted_at,
-  provider_constraints_and_features.id, provider_constraints_and_features.provider_id, provider_constraints_and_features.max_waypoints, provider_constraints_and_features.supports_async_batch_requests
-FROM providers
-  JOIN provider_communication ON providers.id = provider_communication.provider_id
-  JOIN provider_constraints_and_features ON providers.id = provider_constraints_and_features.provider_id
-WHERE providers.id = $1
+  o.id, o.customer_id, o.kind, o.created_at
+FROM optimizations AS o
+WHERE o.id = $1
+LIMIT 1
 `
 
-type GetProviderDetailsByIDRow struct {
-	ModelProvider                       ModelProvider
-	ModelProviderCommunication          ModelProviderCommunication
-	ModelProviderConstraintsAndFeatures ModelProviderConstraintsAndFeatures
+type GetOptimizationByIDRow struct {
+	Optimization Optimization
 }
 
-func (q *Queries) GetProviderDetailsByID(ctx context.Context, id go_uuid.UUID) (GetProviderDetailsByIDRow, error) {
-	row := q.db.QueryRow(ctx, getProviderDetailsByID, id)
-	var i GetProviderDetailsByIDRow
+func (q *Queries) GetOptimizationByID(ctx context.Context, id pgtype.UUID) (GetOptimizationByIDRow, error) {
+	row := q.db.QueryRow(ctx, getOptimizationByID, id)
+	var i GetOptimizationByIDRow
+	err := row.Scan(
+		&i.Optimization.ID,
+		&i.Optimization.CustomerID,
+		&i.Optimization.Kind,
+		&i.Optimization.CreatedAt,
+	)
+	return i, err
+}
+
+const getProviderByID = `-- name: GetProviderByID :one
+SELECT
+  p.id, p.name, p.created_at, p.modified_at, p.deleted_at
+FROM providers AS p
+WHERE p.id = $1
+LIMIT 1
+`
+
+type GetProviderByIDRow struct {
+	ModelProvider ModelProvider
+}
+
+func (q *Queries) GetProviderByID(ctx context.Context, id pgtype.UUID) (GetProviderByIDRow, error) {
+	row := q.db.QueryRow(ctx, getProviderByID, id)
+	var i GetProviderByIDRow
 	err := row.Scan(
 		&i.ModelProvider.ID,
 		&i.ModelProvider.Name,
 		&i.ModelProvider.CreatedAt,
 		&i.ModelProvider.ModifiedAt,
 		&i.ModelProvider.DeletedAt,
-		&i.ModelProviderCommunication.ID,
-		&i.ModelProviderCommunication.ProviderID,
-		&i.ModelProviderCommunication.AccessibleWith,
-		&i.ModelProviderCommunication.Url,
-		&i.ModelProviderCommunication.CreatedAt,
-		&i.ModelProviderCommunication.ModifiedAt,
-		&i.ModelProviderCommunication.DeletedAt,
-		&i.ModelProviderConstraintsAndFeatures.ID,
-		&i.ModelProviderConstraintsAndFeatures.ProviderID,
-		&i.ModelProviderConstraintsAndFeatures.MaxWaypoints,
-		&i.ModelProviderConstraintsAndFeatures.SupportsAsyncBatchRequests,
 	)
 	return i, err
 }
 
-const insertConstraint = `-- name: InsertConstraint :one
-
-INSERT INTO constraints (
-  customer_id, kind, value
-) VALUES (
-  $1, $2, $3
-) RETURNING id, customer_id, kind, value, created_at, modified_at, deleted_at
+const getProviderConstraintByProviderID = `-- name: GetProviderConstraintByProviderID :one
+SELECT
+  pc.id, pc.provider_id, pc.max_waypoints_per_request, pc.modified_at
+FROM provider_constraints AS pc
+WHERE pc.provider_id = $1
+LIMIT 1
 `
 
-type InsertConstraintParams struct {
-	CustomerID go_uuid.UUID
-	Kind       ConstraintKind
-	Value      []byte
+type GetProviderConstraintByProviderIDRow struct {
+	ProviderConstraint ProviderConstraint
 }
 
-// Constraints
-func (q *Queries) InsertConstraint(ctx context.Context, arg InsertConstraintParams) (Constraint, error) {
-	row := q.db.QueryRow(ctx, insertConstraint, arg.CustomerID, arg.Kind, arg.Value)
-	var i Constraint
+func (q *Queries) GetProviderConstraintByProviderID(ctx context.Context, providerID pgtype.UUID) (GetProviderConstraintByProviderIDRow, error) {
+	row := q.db.QueryRow(ctx, getProviderConstraintByProviderID, providerID)
+	var i GetProviderConstraintByProviderIDRow
 	err := row.Scan(
-		&i.ID,
-		&i.CustomerID,
-		&i.Kind,
-		&i.Value,
-		&i.CreatedAt,
-		&i.ModifiedAt,
-		&i.DeletedAt,
+		&i.ProviderConstraint.ID,
+		&i.ProviderConstraint.ProviderID,
+		&i.ProviderConstraint.MaxWaypointsPerRequest,
+		&i.ProviderConstraint.ModifiedAt,
 	)
 	return i, err
 }
 
-const updateApiKey = `-- name: UpdateApiKey :exec
-UPDATE api_keys
+const getProviderDetailsByProviderID = `-- name: GetProviderDetailsByProviderID :one
+SELECT
+  p.id, p.name, p.created_at, p.modified_at, p.deleted_at,
+  pc.id, pc.provider_id, pc.max_waypoints_per_request, pc.modified_at,
+  pf.id, pf.provider_id, pf.supports_async_operations, pf.modified_at
+FROM providers AS p
+LEFT JOIN provider_constraints AS pc
+  ON p.id = pc.provider_id
+LEFT JOIN provider_features AS pf
+  ON p.id = pf.provider_id
+WHERE p.id = $1
+LIMIT 1
+`
+
+type GetProviderDetailsByProviderIDRow struct {
+	ModelProvider      ModelProvider
+	ProviderConstraint ProviderConstraint
+	ProviderFeature    ProviderFeature
+}
+
+func (q *Queries) GetProviderDetailsByProviderID(ctx context.Context, id pgtype.UUID) (GetProviderDetailsByProviderIDRow, error) {
+	row := q.db.QueryRow(ctx, getProviderDetailsByProviderID, id)
+	var i GetProviderDetailsByProviderIDRow
+	err := row.Scan(
+		&i.ModelProvider.ID,
+		&i.ModelProvider.Name,
+		&i.ModelProvider.CreatedAt,
+		&i.ModelProvider.ModifiedAt,
+		&i.ModelProvider.DeletedAt,
+		&i.ProviderConstraint.ID,
+		&i.ProviderConstraint.ProviderID,
+		&i.ProviderConstraint.MaxWaypointsPerRequest,
+		&i.ProviderConstraint.ModifiedAt,
+		&i.ProviderFeature.ID,
+		&i.ProviderFeature.ProviderID,
+		&i.ProviderFeature.SupportsAsyncOperations,
+		&i.ProviderFeature.ModifiedAt,
+	)
+	return i, err
+}
+
+const revokeAllApiKeysByCustomerID = `-- name: RevokeAllApiKeysByCustomerID :exec
+UPDATE api_keys AS ak
 SET
-	key = $2,
-	modified_at = $3
-WHERE id = $1
+  revoked_at = $2
+WHERE ak.customer_id = $1
 `
 
-type UpdateApiKeyParams struct {
-	ID         go_uuid.UUID
-	Key        string
-	ModifiedAt pgtype.Timestamp
+type RevokeAllApiKeysByCustomerIDParams struct {
+	CustomerID pgtype.UUID
+	RevokedAt  pgtype.Timestamp
 }
 
-func (q *Queries) UpdateApiKey(ctx context.Context, arg UpdateApiKeyParams) error {
-	_, err := q.db.Exec(ctx, updateApiKey, arg.ID, arg.Key, arg.ModifiedAt)
+func (q *Queries) RevokeAllApiKeysByCustomerID(ctx context.Context, arg RevokeAllApiKeysByCustomerIDParams) error {
+	_, err := q.db.Exec(ctx, revokeAllApiKeysByCustomerID, arg.CustomerID, arg.RevokedAt)
 	return err
 }
 
-const updateConstraintKindAndValue = `-- name: UpdateConstraintKindAndValue :exec
-UPDATE constraints
-  SET kind = $2,
-    value = $3
-WHERE constraints.id = $1
+const revokeApiKey = `-- name: RevokeApiKey :exec
+UPDATE api_keys AS ak
+SET
+	revoked_at = $2
+WHERE ak.id = $1
 `
 
-type UpdateConstraintKindAndValueParams struct {
-	ID    go_uuid.UUID
-	Kind  ConstraintKind
-	Value []byte
+type RevokeApiKeyParams struct {
+	ID        pgtype.UUID
+	RevokedAt pgtype.Timestamp
 }
 
-func (q *Queries) UpdateConstraintKindAndValue(ctx context.Context, arg UpdateConstraintKindAndValueParams) error {
-	_, err := q.db.Exec(ctx, updateConstraintKindAndValue, arg.ID, arg.Kind, arg.Value)
+func (q *Queries) RevokeApiKey(ctx context.Context, arg RevokeApiKeyParams) error {
+	_, err := q.db.Exec(ctx, revokeApiKey, arg.ID, arg.RevokedAt)
 	return err
 }
 
-const updateConstraintValue = `-- name: UpdateConstraintValue :exec
-UPDATE constraints
-  SET value = $2
-WHERE constraints.id = $1
+const setApiKeyLastUsedAt = `-- name: SetApiKeyLastUsedAt :exec
+UPDATE api_keys AS ak
+SET
+	last_used_at = $2
+WHERE ak.id = $1
 `
 
-type UpdateConstraintValueParams struct {
-	ID    go_uuid.UUID
-	Value []byte
+type SetApiKeyLastUsedAtParams struct {
+	ID         pgtype.UUID
+	LastUsedAt pgtype.Timestamp
 }
 
-func (q *Queries) UpdateConstraintValue(ctx context.Context, arg UpdateConstraintValueParams) error {
-	_, err := q.db.Exec(ctx, updateConstraintValue, arg.ID, arg.Value)
+func (q *Queries) SetApiKeyLastUsedAt(ctx context.Context, arg SetApiKeyLastUsedAtParams) error {
+	_, err := q.db.Exec(ctx, setApiKeyLastUsedAt, arg.ID, arg.LastUsedAt)
+	return err
+}
+
+const updateOptimizationRun = `-- name: UpdateOptimizationRun :exec
+UPDATE optimization_runs AS optr
+SET
+  status = $2,
+  cost = $3,
+  ended_at = $4
+WHERE optr.id = $1
+`
+
+type UpdateOptimizationRunParams struct {
+	ID      pgtype.UUID
+	Status  OptimizationStatus
+	Cost    pgtype.Numeric
+	EndedAt pgtype.Timestamp
+}
+
+func (q *Queries) UpdateOptimizationRun(ctx context.Context, arg UpdateOptimizationRunParams) error {
+	_, err := q.db.Exec(ctx, updateOptimizationRun,
+		arg.ID,
+		arg.Status,
+		arg.Cost,
+		arg.EndedAt,
+	)
 	return err
 }
 
 const updateProvider = `-- name: UpdateProvider :exec
-UPDATE providers p
+UPDATE providers AS p
 SET
   name = $2,
   modified_at = $3
@@ -828,12 +823,76 @@ WHERE p.id = $1
 `
 
 type UpdateProviderParams struct {
-	ID         go_uuid.UUID
+	ID         pgtype.UUID
 	Name       string
 	ModifiedAt pgtype.Timestamp
 }
 
 func (q *Queries) UpdateProvider(ctx context.Context, arg UpdateProviderParams) error {
 	_, err := q.db.Exec(ctx, updateProvider, arg.ID, arg.Name, arg.ModifiedAt)
+	return err
+}
+
+const updateProviderAccessMethod = `-- name: UpdateProviderAccessMethod :exec
+UPDATE provider_access_methods AS pam
+SET
+  communication_method = $2,
+  url = $3,
+  modified_at = $4
+WHERE pam.id = $1
+`
+
+type UpdateProviderAccessMethodParams struct {
+	ID                  pgtype.UUID
+	CommunicationMethod CommunicationMethod
+	Url                 string
+	ModifiedAt          pgtype.Timestamp
+}
+
+func (q *Queries) UpdateProviderAccessMethod(ctx context.Context, arg UpdateProviderAccessMethodParams) error {
+	_, err := q.db.Exec(ctx, updateProviderAccessMethod,
+		arg.ID,
+		arg.CommunicationMethod,
+		arg.Url,
+		arg.ModifiedAt,
+	)
+	return err
+}
+
+const updateProviderConstraint = `-- name: UpdateProviderConstraint :exec
+UPDATE provider_constraints AS pc
+SET
+  max_waypoints_per_request = $2,
+  modified_at = $3
+WHERE pc.id = $1
+`
+
+type UpdateProviderConstraintParams struct {
+	ID                     pgtype.UUID
+	MaxWaypointsPerRequest int32
+	ModifiedAt             pgtype.Timestamp
+}
+
+func (q *Queries) UpdateProviderConstraint(ctx context.Context, arg UpdateProviderConstraintParams) error {
+	_, err := q.db.Exec(ctx, updateProviderConstraint, arg.ID, arg.MaxWaypointsPerRequest, arg.ModifiedAt)
+	return err
+}
+
+const updateProviderFeature = `-- name: UpdateProviderFeature :exec
+UPDATE provider_features AS pf
+SET
+  supports_async_operations = $2,
+  modified_at = $3
+WHERE pf.id = $1
+`
+
+type UpdateProviderFeatureParams struct {
+	ID                      pgtype.UUID
+	SupportsAsyncOperations bool
+	ModifiedAt              pgtype.Timestamp
+}
+
+func (q *Queries) UpdateProviderFeature(ctx context.Context, arg UpdateProviderFeatureParams) error {
+	_, err := q.db.Exec(ctx, updateProviderFeature, arg.ID, arg.SupportsAsyncOperations, arg.ModifiedAt)
 	return err
 }

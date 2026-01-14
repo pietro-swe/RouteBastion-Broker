@@ -1,15 +1,14 @@
 package customer
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/pietro-swe/RouteBastion-Broker/internal/infra/db"
 	"github.com/pietro-swe/RouteBastion-Broker/internal/shared"
 	"github.com/pietro-swe/RouteBastion-Broker/pkg/crypto"
 	"github.com/pietro-swe/RouteBastion-Broker/pkg/customerrors"
-	uuid "github.com/satori/go.uuid"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -21,11 +20,12 @@ func CreateCustomerHandler(
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
-		body := shared.CreateCustomerInput{}
+		body := shared.SaveCustomerInput{}
 		err := c.BindJSON(&body)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
-				"error": err,
+				"code":    customerrors.ErrCodeInvalidInput,
+				"message": err.Error(),
 			})
 
 			return
@@ -53,7 +53,8 @@ func CreateCustomerHandler(
 				})
 			default:
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": e.Error(),
+					"code":    customerrors.ErrUnknown,
+					"message": e.Error(),
 				})
 			}
 
@@ -64,7 +65,6 @@ func CreateCustomerHandler(
 			"id":                 customer.ID,
 			"name":               customer.Name,
 			"businessIdentifier": customer.BusinessIdentifier,
-			"apiKey":             customer.APIKey,
 			"createdAt":          customer.CreatedAt,
 			"updatedAt":          customer.UpdatedAt,
 			"deletedAt":          customer.DeletedAt,
@@ -72,62 +72,7 @@ func CreateCustomerHandler(
 	}
 }
 
-func GetOneByAPIKeyHandler(
-	tracer trace.Tracer,
-	provider db.DBProvider,
-) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		ctx := c.Request.Context()
-
-		apiKey := c.Param("apiKey")
-
-		// traceCtx, span := tracer.Start(ctx, "customer.GetOneCustomerByAPIKey")
-		store := NewCustomersStore(provider)
-		foundCustomer, err := GetOneCustomerByAPIKey(
-			ctx,
-			store,
-			apiKey,
-		)
-		// span.End()
-		if err != nil {
-			switch e := err.(type) {
-			case *customerrors.AppError:
-				c.JSON(customerrors.ToHttpStatus(e), gin.H{
-					"code":    e.Code,
-					"message": e.Msg,
-				})
-			default:
-				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": e.Error(),
-				})
-			}
-
-			return
-		}
-
-		if foundCustomer == nil {
-			message := fmt.Sprintf("Customer for API key %s not found", apiKey)
-
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": message,
-			})
-
-			return
-		}
-
-		c.JSON(http.StatusOK, gin.H{
-			"id":                 foundCustomer.ID,
-			"name":               foundCustomer.Name,
-			"businessIdentifier": foundCustomer.BusinessIdentifier,
-			"apiKey":             foundCustomer.APIKey,
-			"createdAt":          foundCustomer.CreatedAt,
-			"updatedAt":          foundCustomer.UpdatedAt,
-			"deletedAt":          foundCustomer.DeletedAt,
-		})
-	}
-}
-
-func DisableCustomerHandler(
+func DeleteCustomerHandler(
 	tracer trace.Tracer,
 	provider db.DBProvider,
 ) gin.HandlerFunc {
@@ -136,7 +81,7 @@ func DisableCustomerHandler(
 
 		customerID := c.Param("id")
 
-		parsedCustomerID, err := uuid.FromString(customerID)
+		parsedCustomerID, err := uuid.Parse(customerID)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"code":    customerrors.ErrCodeInvalidInput,
@@ -154,9 +99,7 @@ func DisableCustomerHandler(
 			ctx,
 			txManager,
 			store,
-			shared.DeleteCustomerInput{
-				CustomerID: parsedCustomerID,
-			},
+			parsedCustomerID,
 		)
 		// span.End()
 

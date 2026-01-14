@@ -17,7 +17,6 @@ import (
 	"github.com/pietro-swe/RouteBastion-Broker/internal/modules/customer"
 	"github.com/pietro-swe/RouteBastion-Broker/internal/modules/health"
 	"github.com/pietro-swe/RouteBastion-Broker/internal/modules/optimization"
-	"github.com/pietro-swe/RouteBastion-Broker/internal/modules/provider"
 	"github.com/pietro-swe/RouteBastion-Broker/pkg/env"
 	"github.com/pietro-swe/RouteBastion-Broker/pkg/httputils"
 
@@ -115,34 +114,34 @@ func (s *Server) registerRoutes() http.Handler {
 					),
 				)
 
-				customers.GET(
-					"/:apiKey",
-					customer.GetOneByAPIKeyHandler(s.Trace, s.DB),
-				)
+				// customers.GET(
+				// 	"/:apiKey",
+				// 	customer.GetOneByAPIKeyHandler(s.Trace, s.DB),
+				// )
 
-				customers.PUT(
-					"/:customerId/disable",
-					customer.DisableCustomerHandler(s.Trace, s.DB),
+				customers.DELETE(
+					"/:customerId",
+					customer.DeleteCustomerHandler(s.Trace, s.DB),
 				)
 			}
 
-			providers := backoffice.Group("/providers")
-			{
-				providers.POST(
-					"/",
-					provider.CreateProviderHandler(s.DB),
-				)
+			// providers := backoffice.Group("/providers")
+			// {
+			// 	providers.POST(
+			// 		"/",
+			// 		provider.CreateProviderHandler(s.DB),
+			// 	)
 
-				providers.PUT(
-					"/:id",
-					provider.UpdateProviderHandler(s.DB),
-				)
+			// 	providers.PUT(
+			// 		"/:id",
+			// 		provider.UpdateProviderHandler(s.DB),
+			// 	)
 
-				providers.DELETE(
-					"/:id",
-					provider.DeleteProviderHandler(s.DB),
-				)
-			}
+			// 	providers.DELETE(
+			// 		"/:id",
+			// 		provider.DeleteProviderHandler(s.DB),
+			// 	)
+			// }
 		}
 	}
 

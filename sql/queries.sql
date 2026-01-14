@@ -2,43 +2,36 @@
 
 -- name: CreateCustomer :one
 INSERT INTO customers (
-  id, name, business_identifier
+  id, name, business_identifier, created_at
 ) VALUES (
-  $1, $2, $3
+  $1, $2, $3, $4
 ) RETURNING *;
 
--- name: DisableCustomer :exec
+-- name: DeleteCustomer :exec
 UPDATE customers
   SET deleted_at = $2
 WHERE customers.id = $1;
 
 -- name: GetCustomerByBusinessIdentifier :one
 SELECT
-  sqlc.embed(c),
-  sqlc.embed(ak)
+  sqlc.embed(c)
 FROM customers AS c
-JOIN api_keys AS ak
-  ON c.id = ak.customer_id
 WHERE c.business_identifier = $1
 LIMIT 1;
 
 -- name: GetCustomerByApiKey :one
 SELECT
-  sqlc.embed(c),
-  sqlc.embed(ak)
+  sqlc.embed(c)
 FROM customers AS c
 JOIN api_keys AS ak
   ON c.id = ak.customer_id
-WHERE ak.key = $1
+WHERE ak.key_hash = $1
 LIMIT 1;
 
 -- name: GetCustomerByID :one
 SELECT
-  sqlc.embed(c),
-  sqlc.embed(ak)
+  sqlc.embed(c)
 FROM customers AS c
-JOIN api_keys AS ak
-  ON c.id = ak.customer_id
 WHERE c.id = $1
 LIMIT 1;
 
@@ -46,188 +39,207 @@ LIMIT 1;
 
 -- name: CreateApiKey :one
 INSERT INTO api_keys (
-  id, key, customer_id, created_at
+  id, key_hash, customer_id, created_at
 ) VALUES (
   $1, $2, $3, $4
 ) RETURNING *;
 
--- name: DeleteApiKey :exec
-UPDATE api_keys
+-- name: SetApiKeyLastUsedAt :exec
+UPDATE api_keys AS ak
 SET
-	modified_at = $2,
-	deleted_at = $3
-WHERE id = $1;
+	last_used_at = $2
+WHERE ak.id = $1;
 
--- name: DeleteAllApiKeysByCustomerID :exec
-UPDATE api_keys
+-- name: RevokeApiKey :exec
+UPDATE api_keys AS ak
 SET
-  modified_at = $2,
-  deleted_at = $3
-WHERE customer_id = $1;
+	revoked_at = $2
+WHERE ak.id = $1;
 
--- name: UpdateApiKey :exec
-UPDATE api_keys
+-- name: RevokeAllApiKeysByCustomerID :exec
+UPDATE api_keys AS ak
 SET
-	key = $2,
-	modified_at = $3
-WHERE id = $1;
+  revoked_at = $2
+WHERE ak.customer_id = $1;
 
--- name: GetApiKeyByCustomerID :one
+-- name: GetMostRecentApiKeyByCustomerID :one
 SELECT
-  ak.id,
-  ak.key,
-  ak.customer_id,
-  ak.created_at,
-  ak.modified_at,
-  ak.deleted_at
+  sqlc.embed(ak)
 FROM api_keys AS ak
-WHERE (ak.customer_id, ak.deleted_at) = ($1, NULL)
+WHERE (ak.customer_id, ak.revoked_at) = ($1, NULL)
 ORDER BY ak.created_at DESC
 LIMIT 1;
 
--- Vehicles
-
--- name: CreateVehicle :one
-INSERT INTO vehicles (
-  id,
-  plate,
-  capacity,
-  cargo_type,
-  customer_id,
-  created_at
-) VALUES (
-  $1, $2, $3, $4, $5, $6
-) RETURNING *;
-
--- name: DeleteVehicle :exec
-UPDATE vehicles
-  SET deleted_at = $2
-WHERE vehicles.id = $1;
-
--- name: GetManyVehiclesByCustomerID :many
+-- name: GetLastUsedApiKeyByCustomerID :one
 SELECT
-  v.id,
-  v.plate,
-  v.capacity,
-  v.cargo_type,
-  v.customer_id,
-  v.created_at,
-  v.modified_at,
-  v.deleted_at
-FROM vehicles AS v
-WHERE (v.customer_id, v.deleted_at) = ($1, NULL);
-
--- Constraints
-
--- name: InsertConstraint :one
-INSERT INTO constraints (
-  customer_id, kind, value
-) VALUES (
-  $1, $2, $3
-) RETURNING *;
-
--- name: UpdateConstraintKindAndValue :exec
-UPDATE constraints
-  SET kind = $2,
-    value = $3
-WHERE constraints.id = $1;
-
--- name: UpdateConstraintValue :exec
-UPDATE constraints
-  SET value = $2
-WHERE constraints.id = $1;
-
--- name: DeleteConstraint :exec
-UPDATE constraints
-  SET deleted_at = $2
-WHERE constraints.id = $1;
-
--- name: GetConstraintsByCustomerID :many
-SELECT
-  c.id,
-  c.customer_id,
-  c.kind,
-  c.value,
-  c.created_at,
-  c.modified_at,
-  c.deleted_at
-FROM constraints AS c
-WHERE (c.customer_id, c.deleted_at) = ($1, NULL);
+  sqlc.embed(ak)
+FROM api_keys AS ak
+WHERE (ak.customer_id, ak.revoked_at) = ($1, NULL)
+ORDER BY ak.last_used_at DESC NULLS LAST
+LIMIT 1;
 
 -- Providers
 
 -- name: CreateProvider :one
 INSERT INTO providers (
-  name
+  id, name, created_at
 ) VALUES (
-  $1
+  $1, $2, $3
 ) RETURNING *;
 
 -- name: UpdateProvider :exec
-UPDATE providers p
+UPDATE providers AS p
 SET
   name = $2,
   modified_at = $3
 WHERE p.id = $1;
 
 -- name: DeleteProvider :exec
-UPDATE providers p
+UPDATE providers AS p
 SET
-  modified_at = $2,
-  deleted_at = $3
+  deleted_at = $2,
+  modified_at = $3
 WHERE p.id = $1;
 
--- name: GetProviderDetailsByID :one
+-- name: GetActiveProviders :many
 SELECT
-	sqlc.embed(providers),
-  sqlc.embed(provider_communication),
-  sqlc.embed(provider_constraints_and_features)
-FROM providers
-  JOIN provider_communication ON providers.id = provider_communication.provider_id
-  JOIN provider_constraints_and_features ON providers.id = provider_constraints_and_features.provider_id
-WHERE providers.id = $1;
-
--- name: GetAvailableProviders :many
-SELECT
-  sqlc.embed(providers),
-  sqlc.embed(provider_communication),
-  sqlc.embed(provider_constraints_and_features)
-FROM providers
-  JOIN provider_communication ON providers.id = provider_communication.provider_id
-  JOIN provider_constraints_and_features ON providers.id = provider_constraints_and_features.provider_id
-WHERE providers.deleted_at IS NULL
-ORDER BY providers.name ASC;
+  sqlc.embed(p)
+FROM providers AS p
+WHERE p.deleted_at IS NULL
+ORDER BY p.name ASC;
 
 -- name: GetAllProviders :many
 SELECT
-  sqlc.embed(providers),
-  sqlc.embed(provider_communication),
-  sqlc.embed(provider_constraints_and_features)
-FROM providers
-  JOIN provider_communication ON providers.id = provider_communication.provider_id
-  JOIN provider_constraints_and_features ON providers.id = provider_constraints_and_features.provider_id
-ORDER BY providers.name ASC;
+  sqlc.embed(p)
+FROM providers AS p
+ORDER BY p.name ASC;
+
+-- name: GetProviderByID :one
+SELECT
+  sqlc.embed(p)
+FROM providers AS p
+WHERE p.id = $1
+LIMIT 1;
+
+-- name: CreateProviderAccessMethod :one
+INSERT INTO provider_access_methods (
+  id, provider_id, communication_method, url, created_at
+) VALUES (
+  $1, $2, $3, $4, $5
+) RETURNING *;
+
+-- name: UpdateProviderAccessMethod :exec
+UPDATE provider_access_methods AS pam
+SET
+  communication_method = $2,
+  url = $3,
+  modified_at = $4
+WHERE pam.id = $1;
+
+-- name: DeleteProviderAccessMethod :exec
+UPDATE provider_access_methods AS pam
+SET
+  deleted_at = $2,
+  modified_at = $3
+WHERE pam.id = $1;
+
+-- name: GetActiveProviderAccessMethodsByProviderID :many
+SELECT
+  sqlc.embed(pam)
+FROM provider_access_methods AS pam
+WHERE (pam.provider_id, pam.deleted_at) = ($1, NULL)
+ORDER BY pam.created_at ASC;
+
+-- name: CreateProviderConstraint :one
+INSERT INTO provider_constraints (
+  id, provider_id, max_waypoints_per_request
+) VALUES (
+  $1, $2, $3
+) RETURNING *;
+
+-- name: UpdateProviderConstraint :exec
+UPDATE provider_constraints AS pc
+SET
+  max_waypoints_per_request = $2,
+  modified_at = $3
+WHERE pc.id = $1;
+
+-- name: GetProviderConstraintByProviderID :one
+SELECT
+  sqlc.embed(pc)
+FROM provider_constraints AS pc
+WHERE pc.provider_id = $1
+LIMIT 1;
+
+-- name: CreateProviderFeature :one
+INSERT INTO provider_features (
+  id, provider_id, supports_async_operations
+) VALUES (
+  $1, $2, $3
+) RETURNING *;
+
+-- name: UpdateProviderFeature :exec
+UPDATE provider_features AS pf
+SET
+  supports_async_operations = $2,
+  modified_at = $3
+WHERE pf.id = $1;
+
+-- name: GetProviderDetailsByProviderID :one
+SELECT
+  sqlc.embed(p),
+  sqlc.embed(pc),
+  sqlc.embed(pf)
+FROM providers AS p
+LEFT JOIN provider_constraints AS pc
+  ON p.id = pc.provider_id
+LEFT JOIN provider_features AS pf
+  ON p.id = pf.provider_id
+WHERE p.id = $1
+LIMIT 1;
 
 -- Optimizations
 
--- name: GetActiveOptimizationsByCustomerID :many
-SELECT
-  sqlc.embed(optimizations),
-  sqlc.embed(optimization_waypoints),
-  sqlc.embed(optimization_vehicles)
-FROM optimizations
-  INNER JOIN optimization_waypoints ON optimizations.id = optimization_waypoints.optimization_id
-  INNER JOIN optimization_vehicles ON optimizations.id = optimization_vehicles.optimization_id
-WHERE (optimizations.customer_id, optimizations.ended_at) = ($1, NULL)
-ORDER BY optimizations.created_at DESC;
+-- name: CreateOptimization :one
+INSERT INTO optimizations (
+  id, customer_id, kind, created_at
+) VALUES (
+  $1, $2, $3, $4
+) RETURNING *;
 
--- name: GetOptimizationHistoryByCustomerID :many
+-- name: CreateOptimizationRun :one
+INSERT INTO optimization_runs (
+  id, optimization_id, provider_id, status, started_at
+) VALUES (
+  $1, $2, $3, $4, $5
+) RETURNING *;
+
+-- name: UpdateOptimizationRun :exec
+UPDATE optimization_runs AS optr
+SET
+  status = $2,
+  cost = $3,
+  ended_at = $4
+WHERE optr.id = $1;
+
+-- name: GetActiveOptimizationRunsByCustomerID :many
+WITH optimization AS (
+  SELECT
+    o.id
+  FROM optimizations AS o
+  WHERE o.customer_id = $1
+)
 SELECT
-  sqlc.embed(optimizations),
-  sqlc.embed(optimization_waypoints),
-  sqlc.embed(optimization_vehicles)
-FROM optimizations
-  INNER JOIN optimization_waypoints ON optimizations.id = optimization_waypoints.optimization_id
-  INNER JOIN optimization_vehicles ON optimizations.id = optimization_vehicles.optimization_id
-WHERE optimizations.customer_id = $1
-ORDER BY optimizations.created_at DESC;
+  sqlc.embed(optr)
+FROM optimization_runs AS optr
+JOIN optimization AS o
+  ON optr.optimization_id = o.id
+WHERE optr.ended_at IS NULL
+ORDER BY optr.started_at DESC;
+
+-- name: GetOptimizationByID :one
+SELECT
+  sqlc.embed(o)
+FROM optimizations AS o
+WHERE o.id = $1
+LIMIT 1;

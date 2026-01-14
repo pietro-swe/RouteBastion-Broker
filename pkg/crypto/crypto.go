@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"io"
 
-	uuid "github.com/satori/go.uuid"
+	"github.com/google/uuid"
 )
 
 type HashComparer interface {
@@ -71,7 +71,7 @@ func NewHashGenerator(secret []byte) HashGenerator {
 }
 
 func (u *APIKeyGenerator) Generate(plain string) (string, error) {
-	_, err := uuid.FromString(plain)
+	_, err := uuid.Parse(plain)
 	if err != nil {
 		return "", fmt.Errorf("invalid uuid provided: %w", err)
 	}

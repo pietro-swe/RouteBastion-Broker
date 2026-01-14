@@ -3,7 +3,7 @@ package provider
 import (
 	"time"
 
-	uuid "github.com/satori/go.uuid"
+	"github.com/google/uuid"
 )
 
 type CommunicationMethod string
@@ -22,8 +22,13 @@ type Provider struct {
 }
 
 func NewProvider(name string) *Provider {
+	id, err := uuid.NewV7()
+	if err != nil {
+		panic("failed to generate uuid v7 for provider")
+	}
+
 	return &Provider{
-		ID:        uuid.NewV4(),
+		ID:        id,
 		Name:      name,
 		CreatedAt: time.Now(),
 	}

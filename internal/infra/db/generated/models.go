@@ -9,7 +9,6 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgx/v5/pgtype"
-	go_uuid "github.com/satori/go.uuid"
 )
 
 type CargoKind string
@@ -64,7 +63,7 @@ func (ns NullCargoKind) Value() (driver.Value, error) {
 type CommunicationMethod string
 
 const (
-	CommunicationMethodRest            CommunicationMethod = "rest"
+	CommunicationMethodHttp            CommunicationMethod = "http"
 	CommunicationMethodProtocolBuffers CommunicationMethod = "protocol_buffers"
 )
 
@@ -236,8 +235,8 @@ func (ns NullRequestKind) Value() (driver.Value, error) {
 }
 
 type Constraint struct {
-	ID         go_uuid.UUID
-	CustomerID go_uuid.UUID
+	ID         pgtype.UUID
+	CustomerID pgtype.UUID
 	Kind       ConstraintKind
 	Value      []byte
 	CreatedAt  pgtype.Timestamp
@@ -246,16 +245,16 @@ type Constraint struct {
 }
 
 type ModelApiKey struct {
-	ID         go_uuid.UUID
-	Key        string
-	CustomerID go_uuid.UUID
+	ID         pgtype.UUID
+	CustomerID pgtype.UUID
+	KeyHash    string
+	RevokedAt  pgtype.Timestamp
+	LastUsedAt pgtype.Timestamp
 	CreatedAt  pgtype.Timestamp
-	ModifiedAt pgtype.Timestamp
-	DeletedAt  pgtype.Timestamp
 }
 
 type ModelCustomer struct {
-	ID                 go_uuid.UUID
+	ID                 pgtype.UUID
 	Name               string
 	BusinessIdentifier string
 	CreatedAt          pgtype.Timestamp
@@ -263,63 +262,75 @@ type ModelCustomer struct {
 	DeletedAt          pgtype.Timestamp
 }
 
-type ModelOptimization struct {
-	ID              go_uuid.UUID
-	CustomerID      go_uuid.UUID
-	SelectedCloudID go_uuid.UUID
-	Status          OptimizationStatus
-	Kind            RequestKind
-	Cost            pgtype.Numeric
-	StartedAt       pgtype.Timestamp
-	EndedAt         pgtype.Timestamp
-	CreatedAt       pgtype.Timestamp
-	ModifiedAt      pgtype.Timestamp
-}
-
-type ModelOptimizationVehicle struct {
-	OptimizationID go_uuid.UUID
-	VehicleID      go_uuid.UUID
-}
-
-type ModelOptimizationWaypoint struct {
-	ID             go_uuid.UUID
-	OptimizationID go_uuid.UUID
-	Latitude       float64
-	Longitude      float64
-}
-
 type ModelProvider struct {
-	ID         go_uuid.UUID
+	ID         pgtype.UUID
 	Name       string
 	CreatedAt  pgtype.Timestamp
 	ModifiedAt pgtype.Timestamp
 	DeletedAt  pgtype.Timestamp
 }
 
-type ModelProviderCommunication struct {
-	ID             go_uuid.UUID
-	ProviderID     go_uuid.UUID
-	AccessibleWith CommunicationMethod
-	Url            string
-	CreatedAt      pgtype.Timestamp
-	ModifiedAt     pgtype.Timestamp
-	DeletedAt      pgtype.Timestamp
-}
-
-type ModelProviderConstraintsAndFeatures struct {
-	ID                         go_uuid.UUID
-	ProviderID                 go_uuid.UUID
-	MaxWaypoints               int32
-	SupportsAsyncBatchRequests bool
-}
-
 type ModelVehicle struct {
-	ID         go_uuid.UUID
+	ID         pgtype.UUID
+	CustomerID pgtype.UUID
 	Plate      string
 	Capacity   float64
 	CargoType  CargoKind
-	CustomerID go_uuid.UUID
 	CreatedAt  pgtype.Timestamp
 	ModifiedAt pgtype.Timestamp
 	DeletedAt  pgtype.Timestamp
+}
+
+type Optimization struct {
+	ID         pgtype.UUID
+	CustomerID pgtype.UUID
+	Kind       RequestKind
+	CreatedAt  pgtype.Timestamp
+}
+
+type OptimizationRun struct {
+	ID             pgtype.UUID
+	OptimizationID pgtype.UUID
+	ProviderID     pgtype.UUID
+	Status         OptimizationStatus
+	Cost           pgtype.Numeric
+	StartedAt      pgtype.Timestamp
+	EndedAt        pgtype.Timestamp
+}
+
+type OptimizationVehicle struct {
+	OptimizationID pgtype.UUID
+	VehicleID      pgtype.UUID
+}
+
+type OptimizationWaypoint struct {
+	ID             pgtype.UUID
+	OptimizationID pgtype.UUID
+	Sequence       int32
+	Latitude       float64
+	Longitude      float64
+}
+
+type ProviderAccessMethod struct {
+	ID                  pgtype.UUID
+	ProviderID          pgtype.UUID
+	CommunicationMethod CommunicationMethod
+	Url                 string
+	CreatedAt           pgtype.Timestamp
+	ModifiedAt          pgtype.Timestamp
+	DeletedAt           pgtype.Timestamp
+}
+
+type ProviderConstraint struct {
+	ID                     pgtype.UUID
+	ProviderID             pgtype.UUID
+	MaxWaypointsPerRequest int32
+	ModifiedAt             pgtype.Timestamp
+}
+
+type ProviderFeature struct {
+	ID                      pgtype.UUID
+	ProviderID              pgtype.UUID
+	SupportsAsyncOperations bool
+	ModifiedAt              pgtype.Timestamp
 }

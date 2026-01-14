@@ -1,113 +1,120 @@
 package provider
 
-import (
-	"context"
-	"errors"
-	"time"
+// func CreateProvider(
+// 	ctx context.Context,
+// 	store ProvidersStore,
+// 	input shared.CreateProviderInput,
+// ) (*Provider, error) {
+// 	provider := NewProvider(input.Name)
 
-	"github.com/jackc/pgx/v5"
-	"github.com/pietro-swe/RouteBastion-Broker/internal/shared"
-	"github.com/pietro-swe/RouteBastion-Broker/pkg/customerrors"
-	uuid "github.com/satori/go.uuid"
-)
+// 	err := store.Create(ctx, provider)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-func CreateProvider(
-	ctx context.Context,
-	store ProvidersStore,
-	input shared.CreateProviderInput,
-) (*Provider, error) {
-	provider := NewProvider(input.Name)
+// 	return provider, nil
+// }
 
-	err := store.Create(ctx, provider)
-	if err != nil {
-		return nil, err
-	}
+// func UpdateProvider(
+// 	ctx context.Context,
+// 	store ProvidersStore,
+// 	input shared.UpdateProviderInput,
+// ) (*Provider, error) {
+// 	parsedID, err := uuid.FromString(input.ID)
+// 	if err != nil {
+// 		return nil, customerrors.NewApplicationError(
+// 			customerrors.ErrCodeInvalidInput,
+// 			"invalid provider ID",
+// 			err,
+// 		)
+// 	}
 
-	return provider, nil
-}
+// 	existingProvider, err := store.GetDetailsByID(ctx, parsedID)
+// 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+// 		return nil, customerrors.NewInfrastructureError(
+// 			customerrors.ErrCodeDatabaseFailure,
+// 			err.Error(),
+// 			err,
+// 		)
+// 	}
 
-func UpdateProvider(
-	ctx context.Context,
-	store ProvidersStore,
-	input shared.UpdateProviderInput,
-) (*Provider, error) {
-	existingProvider, err := store.GetDetailsByID(ctx, input.ID)
-	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		return nil, customerrors.NewInfrastructureError(
-			customerrors.ErrCodeDatabaseFailure,
-			err.Error(),
-			err,
-		)
-	}
+// 	if errors.Is(err, pgx.ErrNoRows) {
+// 		return nil, customerrors.NewApplicationError(
+// 			customerrors.ErrCodeNotFound,
+// 			"provider not found",
+// 			err,
+// 		)
+// 	}
 
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, customerrors.NewApplicationError(
-			customerrors.ErrCodeNotFound,
-			"provider not found",
-			err,
-		)
-	}
+// 	now := time.Now()
 
-	now := time.Now()
+// 	provider := &Provider{
+// 		ID:         uuid.FromStringOrNil(input.ID),
+// 		Name:       input.Name,
+// 		CreatedAt:  existingProvider.CreatedAt,
+// 		ModifiedAt: &now,
+// 		DeletedAt:  existingProvider.DeletedAt,
+// 	}
 
-	provider := &Provider{
-		ID:         uuid.FromStringOrNil(input.ID),
-		Name:       input.Name,
-		CreatedAt:  existingProvider.CreatedAt,
-		ModifiedAt: &now,
-		DeletedAt:  existingProvider.DeletedAt,
-	}
+// 	updateErr := store.Update(ctx, provider)
+// 	if updateErr != nil {
+// 		return nil, customerrors.NewInfrastructureError(
+// 			customerrors.ErrCodeDatabaseFailure,
+// 			updateErr.Error(),
+// 			updateErr,
+// 		)
+// 	}
 
-	updateErr := store.Update(ctx, provider)
-	if updateErr != nil {
-		return nil, customerrors.NewInfrastructureError(
-			customerrors.ErrCodeDatabaseFailure,
-			updateErr.Error(),
-			updateErr,
-		)
-	}
+// 	return provider, nil
+// }
 
-	return provider, nil
-}
+// func DeleteProvider(
+// 	ctx context.Context,
+// 	store ProvidersStore,
+// 	id string,
+// ) error {
+// 	parsedID, err := uuid.FromString(id)
+// 	if err != nil {
+// 		return customerrors.NewApplicationError(
+// 			customerrors.ErrCodeInvalidInput,
+// 			"invalid provider ID",
+// 			err,
+// 		)
+// 	}
 
-func DeleteProvider(
-	ctx context.Context,
-	store ProvidersStore,
-	id string,
-) error {
-	existingProvider, err := store.GetDetailsByID(ctx, id)
-	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		return customerrors.NewInfrastructureError(
-			customerrors.ErrCodeDatabaseFailure,
-			err.Error(),
-			err,
-		)
-	}
+// 	existingProvider, err := store.GetDetailsByID(ctx, parsedID)
+// 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+// 		return customerrors.NewInfrastructureError(
+// 			customerrors.ErrCodeDatabaseFailure,
+// 			err.Error(),
+// 			err,
+// 		)
+// 	}
 
-	if errors.Is(err, pgx.ErrNoRows) {
-		return customerrors.NewApplicationError(
-			customerrors.ErrCodeNotFound,
-			"provider not found",
-			err,
-		)
-	}
+// 	if errors.Is(err, pgx.ErrNoRows) {
+// 		return customerrors.NewApplicationError(
+// 			customerrors.ErrCodeNotFound,
+// 			"provider not found",
+// 			err,
+// 		)
+// 	}
 
-	if existingProvider.DeletedAt != nil {
-		return customerrors.NewApplicationError(
-			customerrors.ErrCodeConflict,
-			"provider already deleted",
-			nil,
-		)
-	}
+// 	if existingProvider.DeletedAt != nil {
+// 		return customerrors.NewApplicationError(
+// 			customerrors.ErrCodeConflict,
+// 			"provider already deleted",
+// 			nil,
+// 		)
+// 	}
 
-	deleteErr := store.Delete(ctx, id)
-	if deleteErr != nil {
-		return customerrors.NewInfrastructureError(
-			customerrors.ErrCodeDatabaseFailure,
-			deleteErr.Error(),
-			deleteErr,
-		)
-	}
+// 	deleteErr := store.Delete(ctx, parsedID)
+// 	if deleteErr != nil {
+// 		return customerrors.NewInfrastructureError(
+// 			customerrors.ErrCodeDatabaseFailure,
+// 			deleteErr.Error(),
+// 			deleteErr,
+// 		)
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
