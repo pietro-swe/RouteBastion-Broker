@@ -34,18 +34,10 @@ func NewCustomersStore(
 
 func (s *CustomersStoreImpl) Create(ctx context.Context, input *Customer) error {
 	tx, err := dbutils.ExtractTx(ctx)
-	if err != nil && !dbutils.IsNoRowsError(err) {
+	if err != nil {
 		return customerrors.NewInfrastructureError(
 			customerrors.ErrCodeDatabaseFailure,
 			err.Error(),
-			err,
-		)
-	}
-
-	if dbutils.IsNoRowsError(err) {
-		return customerrors.NewApplicationError(
-			customerrors.ErrCodeNotFound,
-			"customer not found",
 			err,
 		)
 	}

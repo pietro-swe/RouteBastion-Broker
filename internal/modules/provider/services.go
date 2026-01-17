@@ -1,19 +1,37 @@
 package provider
 
-// func CreateProvider(
-// 	ctx context.Context,
-// 	store ProvidersStore,
-// 	input shared.CreateProviderInput,
-// ) (*Provider, error) {
-// 	provider := NewProvider(input.Name)
+import (
+	"context"
+)
 
-// 	err := store.Create(ctx, provider)
-// 	if err != nil {
-// 		return nil, err
-// 	}
+func CreateProvider(
+	ctx context.Context,
+	store ProvidersStore,
+	input CreateProviderInput,
+) (*Provider, error) {
+	provider := NewProvider(input.Name)
+	communicationMethods := make([]*ProviderCommunicationMethod, 0, len(input.CommunicationMethods))
+	for _, methodInput := range input.CommunicationMethods {
+		communicationMethod := NewProviderCommunicationMethod(
+			CommunicationMethod(methodInput.Method),
+			methodInput.Url,
+		)
+		communicationMethods = append(communicationMethods, communicationMethod)
+	}
+	contraint := NewProviderConstraint(
+		input.MaxWaypointsPerRequest,
+	)
+	feature := NewProviderFeature(
+		input.SupportsAsyncOperations,
+	)
 
-// 	return provider, nil
-// }
+	_, err := store.Create(ctx, provider, communicationMethods, contraint, feature)
+	if err != nil {
+		return nil, err
+	}
+
+	return provider, nil
+}
 
 // func UpdateProvider(
 // 	ctx context.Context,

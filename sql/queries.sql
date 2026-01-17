@@ -54,13 +54,13 @@ WHERE ak.id = $1;
 UPDATE api_keys AS ak
 SET
 	revoked_at = $2
-WHERE ak.id = $1;
+WHERE ak.id = $1 AND ak.revoked_at IS NULL;
 
 -- name: RevokeAllApiKeysByCustomerID :exec
 UPDATE api_keys AS ak
 SET
   revoked_at = $2
-WHERE ak.customer_id = $1;
+WHERE ak.customer_id = $1 AND ak.revoked_at IS NULL;
 
 -- name: GetMostRecentApiKeyByCustomerID :one
 SELECT

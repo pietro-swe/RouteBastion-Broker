@@ -1,64 +1,63 @@
 package provider
 
-// import (
-// 	"net/http"
+import (
+	"net/http"
 
-// 	"github.com/gin-gonic/gin"
-// 	"github.com/pietro-swe/RouteBastion-Broker/internal/infra/db"
-// 	"github.com/pietro-swe/RouteBastion-Broker/internal/shared"
-// 	"github.com/pietro-swe/RouteBastion-Broker/pkg/customerrors"
-// )
+	"github.com/gin-gonic/gin"
+	"github.com/pietro-swe/RouteBastion-Broker/internal/infra/db"
+	"github.com/pietro-swe/RouteBastion-Broker/pkg/customerrors"
+)
 
-// func CreateProviderHandler(
-// 	provider db.DBProvider,
-// ) gin.HandlerFunc {
-// 	return func(c *gin.Context) {
-// 		ctx := c.Request.Context()
+func CreateProviderHandler(
+	provider db.DBProvider,
+) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 
-// 		body := shared.CreateProviderInput{}
-// 		err := c.BindJSON(&body)
-// 		if err != nil {
-// 			c.JSON(http.StatusBadRequest, gin.H{
-// 				"code":    customerrors.ErrCodeInvalidInput,
-// 				"message": err.Error(),
-// 			})
+		body := CreateProviderInput{}
+		err := c.BindJSON(&body)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"code":    customerrors.ErrCodeInvalidInput,
+				"message": err.Error(),
+			})
 
-// 			return
-// 		}
+			return
+		}
 
-// 		store := NewProvidersStore(provider)
+		store := NewProvidersStore(provider)
 
-// 		providerEntity, err := CreateProvider(
-// 			ctx,
-// 			store,
-// 			body,
-// 		)
-// 		if err != nil {
-// 			switch e := err.(type) {
-// 			case *customerrors.AppError:
-// 				c.JSON(customerrors.ToHttpStatus(e), gin.H{
-// 					"code":    e.Code,
-// 					"message": e.Msg,
-// 				})
-// 			default:
-// 				c.JSON(http.StatusInternalServerError, gin.H{
-// 					"code":    customerrors.ErrUnknown,
-// 					"message": e.Error(),
-// 				})
-// 			}
+		providerEntity, err := CreateProvider(
+			ctx,
+			store,
+			body,
+		)
+		if err != nil {
+			switch e := err.(type) {
+			case *customerrors.AppError:
+				c.JSON(customerrors.ToHttpStatus(e), gin.H{
+					"code":    e.Code,
+					"message": e.Msg,
+				})
+			default:
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"code":    customerrors.ErrUnknown,
+					"message": e.Error(),
+				})
+			}
 
-// 			return
-// 		}
+			return
+		}
 
-// 		c.JSON(http.StatusCreated, gin.H{
-// 			"id":         providerEntity.ID,
-// 			"name":       providerEntity.Name,
-// 			"createdAt":  providerEntity.CreatedAt,
-// 			"modifiedAt": providerEntity.ModifiedAt,
-// 			"deletedAt":  providerEntity.DeletedAt,
-// 		})
-// 	}
-// }
+		c.JSON(http.StatusCreated, gin.H{
+			"id":         providerEntity.ID,
+			"name":       providerEntity.Name,
+			"createdAt":  providerEntity.CreatedAt,
+			"modifiedAt": providerEntity.ModifiedAt,
+			"deletedAt":  providerEntity.DeletedAt,
+		})
+	}
+}
 
 // func UpdateProviderHandler(
 // 	provider db.DBProvider,

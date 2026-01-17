@@ -1,157 +1,166 @@
 package provider
 
-// type ProvidersStore interface {
-// 	Create(ctx context.Context, provider *Provider) error
-// 	Update(ctx context.Context, provider *Provider) error
-// 	Delete(ctx context.Context, id uuid.UUID) error
-// 	GetDetailsByID(ctx context.Context, id uuid.UUID) (*Provider, error)
-// 	GetAllAvailable(ctx context.Context) ([]*Provider, error)
-// 	List(ctx context.Context) ([]*Provider, error)
-// }
+import (
+	"context"
+	"time"
 
-// type PostgreSQLProvidersStore struct {
-// 	q *generated.Queries
-// }
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/pietro-swe/RouteBastion-Broker/internal/infra/db"
+	"github.com/pietro-swe/RouteBastion-Broker/internal/infra/db/generated"
+	"github.com/pietro-swe/RouteBastion-Broker/pkg/customerrors"
+	"github.com/pietro-swe/RouteBastion-Broker/pkg/dbutils"
+)
 
-// func NewProvidersStore(provider db.DBProvider) ProvidersStore {
-// 	return &PostgreSQLProvidersStore{
-// 		q: generated.New(provider.GetConn()),
-// 	}
-// }
+const createProviderAccessMethod = `-- name: CreateProviderAccessMethod :one
+INSERT INTO provider_access_methods (
+  id, provider_id, communication_method, url, created_at
+) VALUES (
+  $1, $2, $3, $4, $5
+) RETURNING id, provider_id, communication_method, url, created_at, modified_at, deleted_at
+`
 
-// func (s *PostgreSQLProvidersStore) Create(ctx context.Context, provider *Provider) error {
-// 	params := generated.CreateProviderParams{
-// 		ID:        provider.ID,
-// 		Name:      provider.Name,
-// 		CreatedAt: dbutils.ConvertTimeToPgtypeTimestamp(time.Now()),
-// 	}
+type ProvidersStore interface {
+	Create(ctx context.Context, provider *Provider, communicationMethods []*ProviderCommunicationMethod, constraint *ProviderConstraint, features *ProviderFeature) (*Provider, error)
+	// Update(ctx context.Context, provider *Provider) error
+	// Delete(ctx context.Context, id uuid.UUID) error
+	// GetDetailsByID(ctx context.Context, id uuid.UUID) (*Provider, error)
+	// GetAllAvailable(ctx context.Context) ([]*Provider, error)
+	// List(ctx context.Context) ([]*Provider, error)
 
-// 	_, err := s.q.CreateProvider(
-// 		ctx,
-// 		params,
-// 	)
+	CreateCommunicationMethodsBulk(ctx context.Context, queriesWithTx *generated.Queries, pcms []*ProviderCommunicationMethod) error
+	createConstraint(ctx context.Context, queriesWithTx *generated.Queries, providerID uuid.UUID, input *ProviderConstraint) error
+	createFeatures(ctx context.Context, queriesWithTx *generated.Queries, providerID uuid.UUID, input *ProviderFeature) error
+}
 
-// 	return err
-// }
+type ProvidersStoreImpl struct {
+	queries *generated.Queries
+}
 
-// func (s *PostgreSQLProvidersStore) Update(ctx context.Context, provider *Provider) error {
-// 	params := generated.UpdateProviderParams{
-// 		ID:   provider.ID,
-// 		Name: provider.Name,
-// 		ModifiedAt: dbutils.ConvertNullableTimeToPgtypeTimestamp(
-// 			provider.ModifiedAt,
-// 		),
-// 	}
+func NewProvidersStore(provider db.DBProvider) ProvidersStore {
+	return &ProvidersStoreImpl{
+		queries: generated.New(provider.GetConn()),
+	}
+}
 
-// 	err := s.q.UpdateProvider(
-// 		ctx,
-// 		params,
-// 	)
+func (s *ProvidersStoreImpl) Create(ctx context.Context, provider *Provider, communicationMethods []*ProviderCommunicationMethod, constraint *ProviderConstraint, features *ProviderFeature) (*Provider, error) {
+	tx, err := dbutils.ExtractTx(ctx)
+	if err != nil {
+		return nil, customerrors.NewInfrastructureError(
+			customerrors.ErrCodeDatabaseFailure,
+			err.Error(),
+			err,
+		)
+	}
 
-// 	return err
-// }
+	queries := s.queries.WithTx(tx)
 
-// func (s *PostgreSQLProvidersStore) Delete(ctx context.Context, id uuid.UUID) error {
-// 	params := generated.DeleteProviderParams{
-// 		ID:         id,
-// 		ModifiedAt: dbutils.ConvertTimeToPgtypeTimestamp(time.Now()),
-// 		DeletedAt:  dbutils.ConvertTimeToPgtypeTimestamp(time.Now()),
-// 	}
+	params := generated.CreateProviderParams{
+		ID:        dbutils.UUIDToPgtypeUUID(provider.ID),
+		Name:      provider.Name,
+		CreatedAt: dbutils.ConvertTimeToPgtypeTimestamp(time.Now()),
+	}
 
-// 	err := s.q.DeleteProvider(ctx, params)
+	_, err = queries.CreateProvider(
+		ctx,
+		params,
+	)
+	if err != nil {
+		return nil, customerrors.NewInfrastructureError(
+			customerrors.ErrCodeDatabaseFailure,
+			err.Error(),
+			err,
+		)
+	}
 
-// 	return err
-// }
+	err = s.createConstraint(ctx, queries, provider.ID, constraint)
+	if err != nil {
+		return nil, err
+	}
 
-// func (s *PostgreSQLProvidersStore) GetDetailsByID(ctx context.Context, id uuid.UUID) (*Provider, error) {
-// 	row, err := s.q.GetProviderDetailsByProviderID(ctx, id)
-// 	if err != nil {
-// 		return nil, err
-// 	}
+	err = s.createFeatures(ctx, queries, provider.ID, features)
+	if err != nil {
+		return nil, err
+	}
 
-// 	modifiedAt, err := dbutils.ConvertPgtypeTimestampToTimePointer(row.ModelProvider.ModifiedAt)
-// 	if err != nil {
-// 		return nil, err
-// 	}
+	return provider, nil
+}
 
-// 	deletedAt, err := dbutils.ConvertPgtypeTimestampToTimePointer(row.ModelProvider.DeletedAt)
-// 	if err != nil {
-// 		return nil, err
-// 	}
+func (s *ProvidersStoreImpl) CreateCommunicationMethodsBulk(
+	ctx context.Context,
+	queriesWithTx *generated.Queries,
+	pcms []*ProviderCommunicationMethod,
+) error {
+	batch := &pgx.Batch{}
+	for _, pcm := range pcms {
+		batch.Queue(
+			createProviderAccessMethod,
+			dbutils.UUIDToPgtypeUUID(pcm.ID),
+			dbutils.UUIDToPgtypeUUID(pcm.ID),
+			string(pcm.Method),
+			pcm.Url,
+			dbutils.ConvertTimeToPgtypeTimestamp(pcm.CreatedAt),
+		)
+	}
 
-// 	provider := FromDatabase(
-// 		row.ModelProvider.ID,
-// 		row.ModelProvider.Name,
-// 		row.ModelProvider.CreatedAt.Time,
-// 		modifiedAt,
-// 		deletedAt,
-// 	)
+	tx, err := dbutils.ExtractTx(ctx)
+	if err != nil {
+		return err
+	}
 
-// 	return provider, nil
-// }
+	batchResults := tx.SendBatch(ctx, batch)
+	defer batchResults.Close()
 
-// func (s *PostgreSQLProvidersStore) GetAllAvailable(ctx context.Context) ([]*Provider, error) {
-// 	rows, err := s.q.GetAllProviders(ctx)
-// 	if err != nil {
-// 		return nil, err
-// 	}
+	for range pcms {
+		_, err := batchResults.Exec()
+		if err != nil {
+			return err
+		}
+	}
 
-// 	var providers []*Provider
+	return batchResults.Close()
+}
 
-// 	for _, row := range rows {
-// 		modifiedAt, err := dbutils.ConvertPgtypeTimestampToTimePointer(row.ModelProvider.ModifiedAt)
-// 		if err != nil {
-// 			return nil, err
-// 		}
+func (s *ProvidersStoreImpl) createConstraint(ctx context.Context, queriesWithTx *generated.Queries, providerID uuid.UUID, input *ProviderConstraint) error {
+	params := generated.CreateProviderConstraintParams{
+		ID:                     dbutils.UUIDToPgtypeUUID(input.ID),
+		ProviderID:             dbutils.UUIDToPgtypeUUID(providerID),
+		MaxWaypointsPerRequest: int32(input.MaxWaypointsPerRequest),
+	}
 
-// 		deletedAt, err := dbutils.ConvertPgtypeTimestampToTimePointer(row.ModelProvider.DeletedAt)
-// 		if err != nil {
-// 			return nil, err
-// 		}
+	_, err := queriesWithTx.CreateProviderConstraint(
+		ctx,
+		params,
+	)
+	if err != nil {
+		return customerrors.NewInfrastructureError(
+			customerrors.ErrCodeDatabaseFailure,
+			err.Error(),
+			err,
+		)
+	}
 
-// 		provider := FromDatabase(
-// 			row.ModelProvider.ID,
-// 			row.ModelProvider.Name,
-// 			row.ModelProvider.CreatedAt.Time,
-// 			modifiedAt,
-// 			deletedAt,
-// 		)
+	return nil
+}
 
-// 		providers = append(providers, provider)
-// 	}
+func (s *ProvidersStoreImpl) createFeatures(ctx context.Context, queriesWithTx *generated.Queries, providerID uuid.UUID, input *ProviderFeature) error {
+	params := generated.CreateProviderFeatureParams{
+		ID:                      dbutils.UUIDToPgtypeUUID(input.ID),
+		ProviderID:              dbutils.UUIDToPgtypeUUID(providerID),
+		SupportsAsyncOperations: input.SupportsAsyncOperations,
+	}
 
-// 	return providers, nil
-// }
+	_, err := queriesWithTx.CreateProviderFeature(
+		ctx,
+		params,
+	)
+	if err != nil {
+		return customerrors.NewInfrastructureError(
+			customerrors.ErrCodeDatabaseFailure,
+			err.Error(),
+			err,
+		)
+	}
 
-// func (s *PostgreSQLProvidersStore) List(ctx context.Context) ([]*Provider, error) {
-// 	rows, err := s.q.GetAllProviders(ctx)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	var providers []*Provider
-
-// 	for _, row := range rows {
-// 		modifiedAt, err := dbutils.ConvertPgtypeTimestampToTimePointer(row.ModelProvider.ModifiedAt)
-// 		if err != nil {
-// 			return nil, err
-// 		}
-
-// 		deletedAt, err := dbutils.ConvertPgtypeTimestampToTimePointer(row.ModelProvider.DeletedAt)
-// 		if err != nil {
-// 			return nil, err
-// 		}
-
-// 		provider := FromDatabase(
-// 			row.ModelProvider.ID,
-// 			row.ModelProvider.Name,
-// 			row.ModelProvider.CreatedAt.Time,
-// 			modifiedAt,
-// 			deletedAt,
-// 		)
-
-// 		providers = append(providers, provider)
-// 	}
-
-// 	return providers, nil
-// }
+	return nil
+}
