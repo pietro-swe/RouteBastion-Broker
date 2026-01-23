@@ -39,6 +39,15 @@ install_k6_lib_if_missing() {
   fi
 }
 
+wait_for_api_to_be_available() {
+  echo "Waiting for API to be available at GET $HOST/health..."
+  until curl -s -o /dev/null -w "%{http_code}" "$HOST/health" | grep -q "200"; do
+    echo "Health-check failed. Retrying in 5 seconds..."
+    sleep 5
+  done
+  echo "API is now available. Proceeding with load tests."
+}
+
 check_if_node_installed
 
 install_k6_lib_if_missing
@@ -77,6 +86,8 @@ for INSTANCES in "${INSTANCES_LIST[@]}"; do
   echo "Restarting Docker environment..."
   docker compose -f ../../docker-compose.yml --profile prod down -v
   docker compose -f ../../docker-compose.yml --profile prod up -d --scale api="$INSTANCES"
+
+  wait_for_api_to_be_available
 
   for i in $(seq 1 "$RUNS"); do
       TIMESTAMP=$(date +%Y-%m-%d-%Hh%M)

@@ -41,6 +41,7 @@ plugins:
         - PATCH
         - DELETE
         - OPTIONS
+        - HEAD
       headers:
         - Accept
         - Content-Type
