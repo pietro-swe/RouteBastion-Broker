@@ -24,5 +24,5 @@ WORKDIR /app
 
 USER 1000:1000
 
-EXPOSE 8080
+EXPOSE 8090
 CMD ["/app/broker"]
