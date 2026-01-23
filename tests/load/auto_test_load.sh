@@ -14,7 +14,7 @@ generate_kong_targets() {
   count=$1
   out=""
   for i in $(seq 1 "$count"); do
-    out+="      - target: route-bastion-broker-api-broker-${i}:8080\n        weight: 100\n"
+    out+="      - target: route-bastion-broker-api-broker-${i}:8090\n        weight: 100\n"
   done
   echo -e "$out"
 }

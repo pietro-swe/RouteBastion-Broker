@@ -28,7 +28,7 @@ services:
       cache:
         condition: service_healthy
     ports:
-      - 8080-8082:8080
+      - 8090-8092:8090
 
   api-dev:
     image: cosmtrek/air:latest
@@ -45,7 +45,7 @@ services:
       seeds:
         condition: service_completed_successfully
     ports:
-      - 8080:8080
+      - 8090:8090
     volumes:
       - .:/app
 
@@ -65,7 +65,8 @@ services:
       seeds:
         condition: service_completed_successfully
     ports:
-      - 8080:8080
+      - 8090:8090
+      - 40000:40000 # Delve Debugger
 
   # ------------------------
   # Supporting Services

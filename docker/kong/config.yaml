@@ -4,7 +4,7 @@ _transform: true
 services:
   - name: Broker
     host: brokers
-    port: 8080
+    port: 8090
     protocol: http
     path: "/"
     connect_timeout: 10000
@@ -26,9 +26,9 @@ upstreams:
     slots: 10
     algorithm: round-robin
     targets:
-      - target: route-bastion-broker-api-1:8080
+      - target: route-bastion-broker-api-1:8090
         weight: 100
-      - target: route-bastion-broker-api-2:8080
+      - target: route-bastion-broker-api-2:8090
         weight: 100
 
 plugins:
