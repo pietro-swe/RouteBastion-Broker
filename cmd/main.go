@@ -72,6 +72,8 @@ func main() {
 		log.Fatalf("[Broker] http server error: %s", serverErr)
 	}
 
+	log.Printf("[Broker] Server running at 0.0.0.0:%s, waiting for graceful shutdown...", config.ServerPort)
+
 	<-done
 	log.Println("[Broker] graceful shutdown complete.")
 }
