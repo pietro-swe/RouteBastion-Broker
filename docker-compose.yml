@@ -24,6 +24,11 @@ services:
       dockerfile: build/app.Dockerfile
     environment:
       - GIN_MODE=release
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 2048M
     depends_on:
       database:
         condition: service_healthy
